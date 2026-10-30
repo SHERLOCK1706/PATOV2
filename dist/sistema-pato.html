@@ -1,0 +1,1465 @@
+<title>Sistema PATO SR/MT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: aplicativo de trabalho com barra lateral de etapas (placa verde federal) e área principal de tabelas; amarelo de sinalização só para alertas */
+:root{
+  --bg:#f3f6f4; --surface:#ffffff; --surface2:#f8faf9; --fg:#16201b; --muted:#56635c; --line:#d6ded9; --line2:#e7ece9;
+  --sign:#1f6b46; --sign-fg:#ffffff; --sign-soft:#e2efe7; --sign-ink:#185638;
+  --warn:#8f5c0f; --warn-soft:#fbf0d9; --bad:#b0352d; --bad-soft:#f8e3e1; --ok:#2a7a4b; --ok-soft:#e1f2e7; --info:#2d5d86; --info-soft:#e3edf6;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --f-body:"Barlow","Segoe UI",Roboto,Arial,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1411; --surface:#151d19; --surface2:#19221e; --fg:#e3eae5; --muted:#9aa8a0; --line:#2a3530; --line2:#212b26;
+  --sign:#2e8a5c; --sign-fg:#f2fbf6; --sign-soft:#1a2c22; --sign-ink:#7fd1a5;
+  --warn:#e3ad52; --warn-soft:#2c2414; --bad:#ea7a70; --bad-soft:#2f1917; --ok:#5cc489; --ok-soft:#16281d; --info:#86b7e3; --info-soft:#17232e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1411; --surface:#151d19; --surface2:#19221e; --fg:#e3eae5; --muted:#9aa8a0; --line:#2a3530; --line2:#212b26;
+  --sign:#2e8a5c; --sign-fg:#f2fbf6; --sign-soft:#1a2c22; --sign-ink:#7fd1a5;
+  --warn:#e3ad52; --warn-soft:#2c2414; --bad:#ea7a70; --bad-soft:#2f1917; --ok:#5cc489; --ok-soft:#16281d; --info:#86b7e3; --info-soft:#17232e; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--sign)}
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+aside{background:var(--sign);color:var(--sign-fg);padding:18px 12px 24px max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh;overflow:auto}
+.brand{font-family:var(--f-display);font-weight:700;font-size:1.45rem;line-height:1;letter-spacing:.02em;padding:6px 8px 10px;border-bottom:1px solid rgba(255,255,255,.25)}
+.brand small{display:block;font-family:var(--f-body);font-weight:500;font-size:.75rem;opacity:.8;letter-spacing:0;margin-top:4px}
+nav{display:grid;gap:2px}
+nav a{display:flex;gap:10px;align-items:center;color:var(--sign-fg);text-decoration:none;padding:7px 10px;border-radius:6px;font-weight:500;font-size:.93rem}
+nav a .n{font-family:var(--f-mono);font-size:.7rem;opacity:.7;width:18px}
+nav a:hover{background:rgba(255,255,255,.12)}
+nav a[aria-current="page"]{background:var(--sign-fg);color:var(--sign-ink)}
+nav a .dot{margin-left:auto;min-width:18px;height:18px;border-radius:9px;font-size:.7rem;display:grid;place-items:center;padding:0 5px;font-weight:600}
+nav a .dot.bad{background:var(--bad);color:#fff}
+nav a .dot.warn{background:#e3ad52;color:#2a1d05}
+nav .sep{font-family:var(--f-display);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;opacity:.65;padding:10px 10px 2px}
+.save{margin-top:auto;font-size:.8rem;opacity:.9;padding:8px 10px;border-top:1px solid rgba(255,255,255,.25)}
+main{min-width:0;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:20px}
+.top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.top h1{font-family:var(--f-display);font-size:1.9rem;margin:0;line-height:1.1;text-wrap:balance}
+.top .meta{color:var(--muted);font-size:.88rem}
+h2{font-family:var(--f-display);font-size:1.35rem;margin:0;font-weight:600}
+h3{font-family:var(--f-display);font-size:1.1rem;margin:0;font-weight:600}
+p{margin:0;max-width:75ch}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:12px;min-width:0;align-content:start}
+.card.flat{padding:0;overflow:hidden}
+.card-h{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.kpi{background:var(--surface);padding:12px 14px;display:grid;gap:2px;align-content:start;min-width:0}
+.kpi b{overflow-wrap:anywhere;font-family:var(--f-display);font-size:clamp(1.15rem,2.2vw,1.5rem);font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font-size:.82rem}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.84rem}
+.mono{font-family:var(--f-mono);font-size:.82rem}
+.tbl{overflow:auto;max-height:70vh}
+.tbl.short{max-height:none}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:6px 9px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line2)}
+thead th{position:sticky;top:0;background:var(--surface2);font-family:var(--f-display);font-weight:600;font-size:.88rem;color:var(--muted);z-index:1;white-space:nowrap}
+td.r,th.r{text-align:right;white-space:nowrap}
+tr.g td{background:var(--sign-soft);font-weight:600}
+tr.g1 td{background:var(--sign);color:var(--sign-fg);font-weight:600}
+tr.sub td.desc{padding-left:22px;color:var(--muted)}
+tr.sub2 td.desc{padding-left:36px;color:var(--muted)}
+tr.clk{cursor:pointer}
+tr.clk:hover td{background:var(--surface2)}
+tr.hl td{box-shadow:inset 3px 0 0 var(--warn)}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:.68rem;padding:1px 6px;border-radius:4px;background:var(--sign-soft);color:var(--sign-ink);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-display);font-weight:600;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.alerta{background:var(--warn-soft);color:var(--warn)}.pill.erro{background:var(--bad-soft);color:var(--bad)}.pill.info{background:var(--info-soft);color:var(--info)}
+.btn{font:inherit;font-weight:600;font-size:.88rem;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;display:inline-flex;gap:6px;align-items:center;text-decoration:none}
+.btn:hover{border-color:var(--sign)}
+.btn.pri{background:var(--sign);border-color:var(--sign);color:var(--sign-fg)}
+.btn.sm{padding:3px 8px;font-size:.8rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--sign);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input,select,textarea{font:inherit;font-size:.88rem;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:5px 8px;min-width:0}
+input.n{font-family:var(--f-mono);text-align:right;width:110px}
+input.cell{width:100%;border-color:transparent;background:transparent}
+input.cell:hover{border-color:var(--line)}
+textarea{width:100%;font-family:var(--f-mono);font-size:.82rem}
+label.f{display:grid;gap:3px;font-size:.8rem;color:var(--muted)}
+label.f input,label.f select{font-size:.92rem;color:var(--fg)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.flow .st{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:4px;background:var(--surface2)}
+.flow .st b{font-family:var(--f-display);font-size:1rem}
+.flow .st span{font-size:.8rem;color:var(--muted)}
+.rule{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:12px 14px;border-bottom:1px solid var(--line2)}
+.rule:last-child{border-bottom:0}
+.rule .pill{grid-row:span 3;align-self:start}
+.rule h3{font-size:1.02rem}
+.rule .art{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.rule p{font-size:.88rem;color:var(--muted)}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:28px;text-align:center;display:grid;gap:10px;justify-items:center;background:var(--surface)}
+.note{font-size:.84rem;color:var(--muted);border-left:3px solid var(--sign);padding:6px 10px;background:var(--surface2);border-radius:0 6px 6px 0}
+.note.w{border-color:var(--warn)}
+.overlay{position:fixed;inset:0;background:rgba(10,20,15,.45);z-index:40;display:flex;justify-content:flex-end}
+.drawer{background:var(--surface);width:min(620px,100%);height:100%;overflow:auto;padding:20px max(20px,env(safe-area-inset-right,0px)) 40px 20px;display:grid;gap:14px;align-content:start;box-shadow:-8px 0 30px rgba(0,0,0,.2)}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:50;font-size:.9rem;max-width:90vw}
+.bar{height:8px;border-radius:4px;background:var(--line2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sign)}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;font-size:.88rem}
+.kv dt{color:var(--muted)}.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+h1,h2,h3,.desc,td{overflow-wrap:anywhere}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:.85rem;padding:5px 10px;border:1px solid var(--line);background:var(--surface);border-radius:999px;cursor:pointer;color:var(--fg)}
+.tabs button[aria-pressed="true"]{background:var(--sign);color:var(--sign-fg);border-color:var(--sign)}
+details>summary{cursor:pointer;font-weight:600}
+.doc h2{margin-top:6px}
+.doc ul{margin:0;padding-left:20px;display:grid;gap:3px}
+.mobnav{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  aside{position:static;height:auto;padding:10px max(16px,env(safe-area-inset-left,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+  nav,.save{display:none}
+  .mobnav{display:block}
+  .mobnav select{width:100%;font-size:1rem;background:var(--sign-fg);color:var(--sign-ink)}
+  .flow{grid-template-columns:1fr 1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .top h1{font-size:1.5rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <aside>
+    <div class="brand">Sistema PATO<small>SR/DNIT/MT · Res. nº 8/2023</small></div>
+    <div class="mobnav"><label class="f" style="color:var(--sign-fg)">Etapa<select id="mobnav"></select></label></div>
+    <nav id="nav"></nav>
+    <div class="save" id="savestate">Carregando…</div>
+  </aside>
+  <main><div class="wrap" id="view"><div class="empty"><h2>Carregando o sistema</h2><p class="muted">Abrindo a base de projetos.</p></div></div></main>
+</div>
+<input type="file" id="filepick" hidden>
+<div id="drawer"></div>
+<div id="toast" hidden class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* Motor de cálculo do PATO — Res. DNIT nº 8/2023
+   Funciona no navegador (window.PatoEngine) e no Node (module.exports). */
+(function (root) {
+  'use strict';
+
+  // ---------- aritmética compatível com o Excel ----------
+  function fix15(x) { return Number(Number(x).toPrecision(15)); }
+  function trunc(x, d) { const f = Math.pow(10, d); return Math.trunc(fix15(x * f)) / f; }
+  function round(x, d) { const f = Math.pow(10, d); const v = fix15(x * f); return (v < 0 ? -Math.round(-v) : Math.round(v)) / f; }
+  function roundup(x) { const v = fix15(x); return v < 0 ? -Math.ceil(-v) : Math.ceil(v); }
+  const norm = s => String(s == null ? '' : s).trim().toUpperCase();
+
+  // ---------- avaliador de expressões (sem eval) ----------
+  function tokenize(src) {
+    const t = []; let i = 0; const s = String(src);
+    while (i < s.length) {
+      const c = s[i];
+      if (/\s/.test(c)) { i++; continue; }
+      if (/[0-9.]/.test(c)) { let j = i; while (j < s.length && /[0-9.eE]/.test(s[j]) && !(/[eE]/.test(s[j]) && !/[0-9+-]/.test(s[j + 1] || ''))) j++; t.push({ k: 'n', v: parseFloat(s.slice(i, j)) }); i = j; continue; }
+      if (/[A-Za-z_]/.test(c)) { let j = i; while (j < s.length && /[A-Za-z0-9_]/.test(s[j])) j++; t.push({ k: 'id', v: s.slice(i, j) }); i = j; continue; }
+      if (c === '"' || c === "'") { let j = i + 1; while (j < s.length && s[j] !== c) j++; t.push({ k: 's', v: s.slice(i + 1, j) }); i = j + 1; continue; }
+      if ('+-*/^(),'.includes(c)) { t.push({ k: c }); i++; continue; }
+      throw new Error('Caractere inválido na expressão: ' + c);
+    }
+    return t;
+  }
+  function parse(src) {
+    const t = tokenize(src); let p = 0;
+    const peek = () => t[p], eat = k => { if (!t[p] || t[p].k !== k) throw new Error('Esperado ' + k + ' em: ' + src); return t[p++]; };
+    function prim() {
+      const x = peek(); if (!x) throw new Error('Expressão incompleta: ' + src);
+      if (x.k === 'n') { p++; return { n: x.v }; }
+      if (x.k === 's') { p++; return { s: x.v }; }
+      if (x.k === '-') { p++; return { neg: pow() }; }
+      if (x.k === '+') { p++; return pow(); }
+      if (x.k === '(') { p++; const e = add(); eat(')'); return e; }
+      if (x.k === 'id') {
+        p++;
+        if (peek() && peek().k === '(') { p++; const args = []; if (peek().k !== ')') { args.push(add()); while (peek().k === ',') { p++; args.push(add()); } } eat(')'); return { f: x.v, args }; }
+        return { v: x.v };
+      }
+      throw new Error('Token inesperado em: ' + src);
+    }
+    function pow() { let l = prim(); while (peek() && peek().k === '^') { p++; l = { op: '^', l, r: prim() }; } return l; }
+    function mul() { let l = pow(); while (peek() && (peek().k === '*' || peek().k === '/')) { const o = t[p++].k; l = { op: o, l, r: pow() }; } return l; }
+    function add() { let l = mul(); while (peek() && (peek().k === '+' || peek().k === '-')) { const o = t[p++].k; l = { op: o, l, r: mul() }; } return l; }
+    const e = add(); if (p < t.length) throw new Error('Sobrou texto na expressão: ' + src); return e;
+  }
+  const cache = new Map();
+  function compile(src) { const k = String(src); if (!cache.has(k)) cache.set(k, parse(k === '' ? '0' : k)); return cache.get(k); }
+  function evalNode(n, ctx) {
+    if ('n' in n) return n.n;
+    if ('s' in n) return n.s;
+    if ('neg' in n) return -evalNode(n.neg, ctx);
+    if ('op' in n) {
+      const a = evalNode(n.l, ctx), b = evalNode(n.r, ctx);
+      switch (n.op) { case '+': return a + b; case '-': return a - b; case '*': return a * b; case '/': return b === 0 ? 0 : a / b; case '^': return Math.pow(a, b); }
+    }
+    if ('v' in n) { if (!(n.v in ctx.vars)) throw new Error('Variável desconhecida: ' + n.v); return ctx.vars[n.v]; }
+    if ('f' in n) {
+      const fn = ctx.fns[n.f]; if (!fn) throw new Error('Função desconhecida: ' + n.f);
+      return fn.apply(null, n.args.map(a => evalNode(a, ctx)));
+    }
+    throw new Error('Nó inválido');
+  }
+  function evaluate(src, ctx) { return evalNode(compile(src), ctx); }
+
+  // ---------- módulos ----------
+  function calcICP(st) {
+    const P = st.icp.parametros || {}; const metodo = P.metodo || 'planilha';
+    const mult = metodo === 'planilha' ? (Number(P.fatorFaixas) || 2) : 1;
+    const rows = (st.icp.levantamento || []).filter(r => metodo === 'planilha' ? r.sentido !== 'D' : true);
+    const pts = { Alta: 1, 'Média': 0.5, Baixa: 0.25, SR: 0 };
+    const lev = (st.icp.levantamento || []).map(r => {
+      const icp = 50 * (pts[r.panela] || 0) + 30 * (pts[r.remendo] || 0) + 20 * (pts[r.trinca] || 0);
+      return Object.assign({}, r, { ext: Math.abs(r.kmFim - r.kmIni), icp, condicao: icp < 30 ? 'BOM' : icp < 50 ? 'REGULAR' : icp < 70 ? 'RUIM' : 'PÉSSIMO' });
+    });
+    const sumCls = cls => {
+      let s = 0;
+      rows.forEach(r => { const ext = Math.abs(r.kmFim - r.kmIni); if (cls.some(([col, val]) => norm(col === 'W' ? r.intervPrim : r.intervSec) === norm(val))) s += ext; });
+      return s;
+    };
+    const vars = { largura: Number(P.larguraFaixa) || 3.6 };
+    const res = {};
+    (st.icp.regras || []).forEach(rg => { if (!rg.somaRegras) res[rg.id] = { km: roundup(sumCls(rg.classes || [])) }; });
+    (st.icp.regras || []).forEach(rg => { if (rg.somaRegras) res[rg.id] = { km: rg.somaRegras.reduce((a, id) => a + (res[id] ? res[id].km : 0), 0) }; });
+    (st.icp.regras || []).forEach(rg => {
+      const ne = evaluate(rg.neExpr, { vars, fns: {} });
+      const r = res[rg.id]; r.ne = ne; r.mult = mult; r.calc = ne * r.km * mult;
+      const h = (st.icp.historico || {})[rg.id] || {}; r.historico = Number(h.valor) || 0;
+      r.adotado = Math.max(r.calc, r.historico); r.criterio = r.adotado === r.calc ? 'ICP' : 'Histórico';
+      r.servico = rg.servico; r.unidade = rg.unidade; r.neFonte = rg.neFonte;
+    });
+    return { metodo, mult, regras: res, levantamento: lev };
+  }
+
+  function calcRocada(st) {
+    const es = (st.rocada && st.rocada.estacoes) || [];
+    let a = 0, b = 0; es.forEach(e => { if (e.distancia > 0) { a += e.nere / e.distancia; b += 1 / e.distancia; } });
+    const nerp = b ? a / b : 0;
+    const sugerido = Math.round(nerp) + 1;
+    const adotado = st.rocada && st.rocada.neAdotado != null && st.rocada.neAdotado !== '' ? Number(st.rocada.neAdotado) : (st.rocada && st.rocada.nePlanilha) || sugerido;
+    return { nerp, sugerido, adotado };
+  }
+
+  function lookupCroqui(st, chave) {
+    const k = norm(chave); const c = st.croqui || {};
+    for (const key in c) if (norm(key) === k) return c[key];
+    return null;
+  }
+  function calcFIT(st) {
+    const out = {};
+    (st.fit || []).forEach(f => {
+      const c = lookupCroqui(st, f.chave);
+      const dmtp = c ? Number(c.P) || 0 : 0, dmtu = c ? Number(c.Pu) || 0 : 0;
+      const a1 = 70 + 0.0035 * (Number(f.vmdf) || 0), a2 = 60 * dmtu;
+      const fit = dmtp > 0 ? 1 + (a1 + a2) / (dmtp * 60) : 1;
+      out[f.frente + '|' + norm(f.chave)] = { fit, dmtp, dmtu, a1, a2, vmdf: f.vmdf, codigo: f.codigo, chave: f.chave, frente: f.frente };
+    });
+    return out;
+  }
+
+  function compute(st, opts) {
+    opts = opts || {};
+    const proj = st.projeto || {};
+    const ext = Number(proj.extensao) || 0;
+    const prazo = Number(proj.prazoAnos) || 1;
+    const icp = calcICP(st);
+    const rocada = calcRocada(st);
+    const fitTab = calcFIT(st);
+    const linhas = st.linhas || [];
+    const byId = {}; linhas.forEach(L => byId[L.id] = L);
+    const memo = {}; const busy = {};
+    const erros = [];
+    const precos = st.precos || {};
+
+    const transpMemo = {};
+    function transp(id) {
+      if (id in transpMemo) return transpMemo[id].total;
+      const blk = (st.transportes || []).find(b => b.id === id);
+      if (!blk) { erros.push('Bloco de transporte não encontrado: ' + id); return 0; }
+      let total = 0; const det = [];
+      blk.linhas.forEach(l => {
+        let q = 0;
+        if (l.faixaPATO) linhas.forEach(L => { if (L.linha >= l.faixaPATO[0] && L.linha <= l.faixaPATO[1] && String(L.codigo) === String(l.servico)) q += line(L.id).qtd; });
+        const consumo = evaluate(l.consumoExpr || '0', ctxBase());
+        const c = lookupCroqui(st, l.chave);
+        const dmt = c && l.colunaDMT ? (Number(c[l.colunaDMT]) || 0) : 0;
+        let fit = 1;
+        if (l.usaFIT) { const f = fitTab[l.fitFrente + '|' + norm(l.chave)]; fit = f ? f.fit : 1; }
+        else if (l.fitFixo != null) fit = l.fitFixo;
+        const momento = trunc(q * consumo * dmt * fit, 3);
+        total += momento;
+        det.push({ servico: l.servico, material: l.material, origem: l.origem, destino: l.destino, qtd: q, consumo, dmt, fit, momento, semCroqui: !c });
+      });
+      transpMemo[id] = { id, codigo: blk.codigo, frente: blk.frente, descricao: blk.descricao, total, linhas: det };
+      return total;
+    }
+
+    function desempenho() {
+      const D = st.desempenho; if (!D) return null;
+      const ctx = ctxBase();
+      let sd = 0, cd = 0; const det = [];
+      D.linhas.forEach(l => {
+        let qkm;
+        if (l.auxiliar) qkm = evaluate(l.qtdPorKmExpr, ctx);
+        else {
+          const tot = evaluate(l.qtdTotalExpr, ctx);
+          const freq = evaluate(l.freqExpr, ctx);
+          qkm = ext ? trunc(tot * l.ne * freq / ext, 3) : 0;
+          l._tot = tot; l._freq = freq;
+        }
+        const p = precos[l.codigo] || {};
+        const psd = Number(p.sd) || 0, pcd = Number(p.cd) || 0;
+        sd += qkm * psd; cd += qkm * pcd;
+        det.push({ codigo: l.codigo, descricao: p.descricao || '', grupo: l.grupo, memoria: l.memoria, unidade: l.unidade, qtdTotal: l._tot, ne: l.ne, freq: l._freq, qtdPorKm: qkm, puSD: psd, puCD: pcd, kmAnoSD: qkm * psd, kmAnoCD: qkm * pcd, auxiliar: !!l.auxiliar });
+      });
+      const kmMesSD = trunc(sd / 12, 2), kmMesCD = trunc(cd / 12, 2);
+      return { linhas: det, kmAnoSD: sd, kmAnoCD: cd, kmMesSD, kmMesCD, mesSD: trunc(kmMesSD * ext, 2), mesCD: trunc(kmMesCD * ext, 2) };
+    }
+    const gd = desempenho();
+    const precoDe = (codigo, col) => {
+      if (codigo === (st.desempenho && st.desempenho.codigo) && gd) return col === 'sd' ? gd.mesSD : gd.mesCD;
+      const p = precos[codigo]; return p ? Number(p[col]) || 0 : null;
+    };
+
+    function ctxBase(L) {
+      return {
+        vars: { prazo, ext, PI: Math.PI, neRocada: rocada.adotado, largura: Number((st.icp.parametros || {}).larguraFaixa) || 0, codigo: L ? L.codigo : '' },
+        fns: {
+          inv: k => { const i = (st.inventario || {})[k]; if (!i) { erros.push('Inventário sem a chave ' + k); return 0; } return Number(i.valor) || 0; },
+          icp: id => icp.regras[id] ? icp.regras[id].adotado : 0,
+          icpKm: id => icp.regras[id] ? icp.regras[id].km : 0,
+          transp: id => transp(id),
+          undia: (fr, cod) => { const t = (st.undia || {})[fr] || {}; return Number(t[String(cod)]) || 0; },
+          qtd: id => line(id).qtd, base: id => line(id).base, fator: id => line(id).fator,
+        },
+      };
+    }
+    function line(id) {
+      if (memo[id]) return memo[id];
+      const L = byId[id]; if (!L) { erros.push('Linha inexistente: ' + id); return { qtd: 0, base: 0, fator: 0 }; }
+      if (busy[id]) { erros.push('Referência circular na linha ' + L.item); return { qtd: 0, base: 0, fator: 0 }; }
+      busy[id] = true;
+      const ctx = ctxBase(L);
+      let base = 0, fator = 0, qtd = 0, err = null;
+      try {
+        base = evaluate(L.baseExpr, ctx);
+        if (L.modo === 'icp') { qtd = icp.regras[L.icpRegra] ? icp.regras[L.icpRegra].adotado : 0; fator = base ? qtd / base : 0; }
+        else {
+          fator = evaluate(L.fatorExpr === '' || L.fatorExpr == null ? '1' : L.fatorExpr, ctx);
+          qtd = L.modo === 'round' ? round(base * fator, L.casas == null ? 3 : L.casas) : trunc(base * fator, L.casas == null ? 3 : L.casas);
+        }
+      } catch (e) { err = e.message; erros.push('Linha ' + L.item + ': ' + e.message); }
+      const puSD = precoDe(L.codigo, 'sd'), puCD = precoDe(L.codigo, 'cd');
+      const r = { id, base, fator, qtd, puSD, puCD, sd: puSD == null ? 0 : trunc(qtd * puSD, 2), cd: puCD == null ? 0 : trunc(qtd * puCD, 2), semPreco: puSD == null || puCD == null, erro: err };
+      memo[id] = r; busy[id] = false; return r;
+    }
+    linhas.forEach(L => line(L.id));
+    (st.transportes || []).forEach(b => transp(b.id));
+
+    // estrutura de grupos pela ordem das linhas
+    const grupos = (st.grupos || []).slice().sort((a, b) => a.linha - b.linha);
+    const all = grupos.map(g => ({ tipo: 'g', linha: g.linha, g })).concat(linhas.map(L => ({ tipo: 'l', linha: L.linha, L }))).sort((a, b) => a.linha - b.linha);
+    const res = {}; let top = null, sub = null; const ordem = [];
+    all.forEach(x => {
+      if (x.tipo === 'g') {
+        const nivel = x.g.item.split('.').length;
+        if (nivel === 1) { top = x.g; sub = null; }
+        else if (nivel === 2) { sub = x.g; }
+        ordem.push({ tipo: 'g', id: x.g.id, item: x.g.item, titulo: x.g.titulo, nivel });
+        return;
+      }
+      const L = x.L; const r = memo[L.id];
+      r.familia = top ? top.item : L.item.slice(0, 2); r.grupo = sub ? sub.item : null; r.grupoTitulo = sub ? sub.titulo : '';
+      res[L.id] = r; ordem.push({ tipo: 'l', id: L.id });
+    });
+    const resumo = []; const idx = {};
+    grupos.forEach(g => { if (g.item.split('.').length === 2) { idx[g.item] = { item: g.item, titulo: g.titulo, sd: 0, cd: 0, familia: g.item.slice(0, 2) }; resumo.push(idx[g.item]); } });
+    let conservaSD = 0, conservaCD = 0, dsmSD = 0, dsmCD = 0;
+    linhas.forEach(L => {
+      const r = res[L.id]; if (!r) return;
+      if (r.grupo && idx[r.grupo]) { idx[r.grupo].sd += r.sd; idx[r.grupo].cd += r.cd; }
+      if (r.familia === '02') { dsmSD += r.sd; dsmCD += r.cd; } else { conservaSD += r.sd; conservaCD += r.cd; }
+    });
+    const totSD = conservaSD + dsmSD, totCD = conservaCD + dsmCD;
+    resumo.forEach(g => { g.pSD = totSD ? g.sd / totSD : 0; g.pCD = totCD ? g.cd / totCD : 0; });
+    const condicao = totSD <= totCD ? 'sd' : 'cd';
+
+    // planilha contratual e curva ABC (por código)
+    const dsmNoPrazo = opts.dsmNoPrazo != null ? opts.dsmNoPrazo : !!(st.parametros && st.parametros.dsmMultiplicaPrazo);
+    function contratual(col, dobra) {
+      if (dobra == null) dobra = dsmNoPrazo;
+      const agg = {};
+      linhas.forEach(L => {
+        const r = res[L.id]; const mult = r.familia === '02' && !dobra ? 1 : prazo;
+        const a = agg[L.codigo] || (agg[L.codigo] = { codigo: L.codigo, descricao: L.descricao || (precos[L.codigo] || {}).descricao, unidade: L.unidade, qtd: 0, pu: col === 'sd' ? r.puSD : r.puCD });
+        a.qtd += r.qtd * mult;
+      });
+      const itens = Object.values(agg).map(a => Object.assign(a, { qtd: fix15(a.qtd), total: trunc((a.pu || 0) * fix15(a.qtd), 2) }));
+      const total = itens.reduce((s, a) => s + a.total, 0);
+      itens.sort((a, b) => b.total - a.total);
+      let acc = 0; itens.forEach(a => { a.p = total ? a.total / total : 0; acc += a.p; a.acum = acc; a.faixa = acc <= 0.8 + 1e-12 ? 'A' : acc <= 0.95 + 1e-12 ? 'B' : 'C'; });
+      return { itens, total };
+    }
+    const contratoSD = contratual('sd'), contratoCD = contratual('cd');
+    const difDSM = { sd: contratual('sd', true).total - contratual('sd', false).total, cd: contratual('cd', true).total - contratual('cd', false).total };
+
+    return {
+      icp, rocada, fit: fitTab, desempenho: gd, transportes: transpMemo, linhas: res, ordem,
+      resumo, totais: { conservaSD, conservaCD, dsmSD, dsmCD, sd: totSD, cd: totCD, condicao, pDSM: (condicao === 'sd' ? dsmSD / totSD : dsmCD / totCD) || 0 },
+      contrato: { sd: contratoSD, cd: contratoCD, dsmNoPrazo, prazo, difDSM }, erros,
+    };
+  }
+
+  // ---------- regras de validação (Res. DNIT nº 8/2023) ----------
+  const ASFALTO = /^AM/;
+  function validar(st, R, hoje) {
+    const out = []; const add = (id, art, titulo, status, detalhe, ref) => out.push({ id, art, titulo, status, detalhe, ref: ref || [] });
+    const P = st.projeto || {}; const linhas = st.linhas || [];
+    const brl = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    hoje = hoje || new Date();
+
+    // R01 data-base x abertura
+    if (P.dataBase) {
+      const [y, m] = P.dataBase.split('-').map(Number); const lim = new Date(y + 1, m - 1, 1);
+      const ref = P.aberturaLicitacao ? new Date(P.aberturaLicitacao + 'T00:00:00') : hoje;
+      const dentro = ref <= lim; const limTxt = lim.toLocaleDateString('pt-BR');
+      add('R01', 'Art. 22, parágrafo único', 'Data-base com no máximo 1 ano até o início da licitação', dentro ? (P.aberturaLicitacao ? 'ok' : 'alerta') : 'erro',
+        'Data-base ' + String(m).padStart(2, '0') + '/' + y + '; o prazo de 1 ano vai até ' + limTxt + '. ' + (P.aberturaLicitacao ? 'Início da licitação informado: ' + P.aberturaLicitacao.split('-').reverse().join('/') + '.' : (dentro ? 'Informe a data de início da licitação para confirmar.' : 'Esse prazo já passou e o início da licitação não foi informado. Se o processo ainda não começou, o orçamento precisa ir para o SICRO mais recente.')));
+    } else add('R01', 'Art. 22, parágrafo único', 'Data-base com no máximo 1 ano até o início da licitação', 'erro', 'Data-base não informada.');
+
+    // R02 DSM
+    const pd = R.totais.pDSM;
+    add('R02', 'Art. 6º, III', 'DSM limitados a 25% do orçamento inicial', pd <= 0.25 ? 'ok' : 'erro', 'DSM somam ' + brl(R.totais.condicao === 'sd' ? R.totais.dsmSD : R.totais.dsmCD) + ', ou ' + (pd * 100).toFixed(2).replace('.', ',') + '% do orçamento.');
+
+    // R03 prazo
+    const pz = Number(P.prazoAnos);
+    add('R03', 'Art. 9º', 'Prazo de execução múltiplo de 1 ano', pz >= 1 && Number.isInteger(pz) ? 'ok' : 'erro', 'Prazo informado: ' + (P.prazoAnos || '—') + ' ano(s).');
+
+    // R04 contrato: DSM no prazo
+    const dif = R.contrato.difDSM ? R.contrato.difDSM[R.totais.condicao] : 0;
+    add('R04', 'Art. 9º, § 3º', 'DSM não são de natureza continuada', R.contrato.dsmNoPrazo && R.contrato.prazo > 1 ? 'erro' : 'ok',
+      R.contrato.dsmNoPrazo && R.contrato.prazo > 1 ? 'A planilha contratual multiplica também os DSM pelo prazo de ' + R.contrato.prazo + ' anos, repetindo obras pontuais. Isso acrescenta ' + brl(dif) + ' ao valor do contrato.' : 'Os DSM entram uma única vez na planilha contratual' + (dif > 0.01 ? ' (multiplicá-los pelo prazo acrescentaria ' + brl(dif) + ').' : '.'));
+
+    // R05 grupo de desempenho I
+    const temGD = linhas.some(L => L.codigo === 'GD');
+    add('R05', 'Art. 5º, § 1º', 'Grupo de desempenho I obrigatório em rodovia pavimentada', P.tipo !== 'pavimentada' || temGD ? 'ok' : 'erro', temGD ? 'Item GD presente na planilha.' : 'Item de conservação da faixa de domínio por desempenho não encontrado.');
+
+    // R06 origem
+    const semOrigem = linhas.filter(L => !L.origem);
+    add('R06', 'Art. 24, § 1º', 'Toda quantidade com origem declarada', semOrigem.length ? 'alerta' : 'ok', semOrigem.length ? semOrigem.length + ' linha(s) sem origem: ' + semOrigem.slice(0, 8).map(L => L.item).join(', ') + (semOrigem.length > 8 ? '…' : '') : 'Todas as ' + linhas.length + ' linhas declaram a origem.', semOrigem.map(L => L.id));
+
+    // R07 acostamento fora de tapa-buraco / remendo
+    const pav = linhas.filter(L => /^(4915757|4915631|4915632)$/.test(L.codigo));
+    const comAcost = pav.filter(L => /acost_/.test(L.baseExpr || ''));
+    add('R07', 'Art. 17, § 2º', 'Tapa-buraco e remendo calculados só sobre a pista', comAcost.length ? 'erro' : 'ok', comAcost.length ? 'A base usa acostamento nas linhas ' + comAcost.map(L => L.item).join(', ') + '.' : 'Base de cálculo restrita à faixa de pista nas ' + pav.length + ' linhas de reparo, tapa-buraco e remendo.', comAcost.map(L => L.id));
+
+    // R08 mão de obra / equipamento como item
+    const insumo = linhas.filter(L => /^[PE]\d{4}$/.test(L.codigo));
+    add('R08', 'Art. 21', 'Sem mão de obra ou equipamento como item da planilha', insumo.length ? 'erro' : 'ok', insumo.length ? 'Itens de insumo direto: ' + insumo.map(L => L.codigo).join(', ') : 'Nenhum insumo de mão de obra ou equipamento lançado como item.', insumo.map(L => L.id));
+
+    // R09 insumos asfálticos separados
+    const am = linhas.filter(L => ASFALTO.test(L.codigo));
+    const semTM = am.filter(L => !linhas.some(T => T.codigo === 'TM' + L.codigo.slice(2) && Math.abs(T.linha - L.linha) <= 2));
+    add('R09', 'Art. 48, parágrafo único', 'Aquisição e transporte de betuminosos em itens próprios', semTM.length ? 'alerta' : 'ok', am.length + ' itens de aquisição de material betuminoso' + (semTM.length ? '; sem transporte ao lado: ' + semTM.map(L => L.item).join(', ') : ', todos com o transporte correspondente.'), semTM.map(L => L.id));
+
+    // R10 binômio
+    const bin = st.binomio || [];
+    const poucos = bin.filter(b => (b.origens || []).length < 3);
+    add('R10', 'Art. 46', 'Binômio com ao menos 3 origens por material betuminoso', !bin.length ? 'alerta' : poucos.length ? 'erro' : 'ok', !bin.length ? 'Nenhum binômio cadastrado.' : poucos.length ? 'Menos de 3 origens: ' + poucos.map(b => b.material).join('; ') : bin.length + ' materiais, todos com 3 ou mais origens.');
+
+    // R11 engenheiro
+    const eng = Number((st.adm || {}).engenheiroCoef);
+    add('R11', 'Art. 25', 'Engenheiro supervisor entre 0,25 e 1,00', eng >= 0.25 && eng <= 1 ? 'ok' : 'erro', 'Coeficiente adotado: ' + (isNaN(eng) ? '—' : eng.toString().replace('.', ',')) + '.');
+
+    // R12 fora do SICRO
+    const fora = linhas.filter(L => !/^(\d{6,7}|AM\d+|TM\d+|GD|ADM|CAN|INSIND|MOB|DESMOB)$/.test(L.codigo));
+    const codFora = [...new Set(fora.map(L => L.codigo))];
+    add('R12', 'Art. 22 e art. 99', 'Composições fora do SICRO justificadas', codFora.length ? 'alerta' : 'ok', codFora.length ? 'Códigos próprios: ' + codFora.join(', ') + '. Precisam de composição e justificativa no processo.' : 'Todos os serviços usam código do SICRO.', fora.map(L => L.id));
+
+    // R13 SNV
+    const seg = (P.segmentos || []).slice().sort((a, b) => a.kmIni - b.kmIni);
+    let gap = []; let cur = Number(P.kmIni);
+    seg.forEach(s => { if (Math.abs(s.kmIni - cur) > 0.001) gap.push(cur.toFixed(1) + '–' + Number(s.kmIni).toFixed(1)); cur = Math.max(cur, s.kmFim); });
+    if (seg.length && Math.abs(cur - Number(P.kmFim)) > 0.001) gap.push(cur.toFixed(1) + '–' + Number(P.kmFim).toFixed(1));
+    add('R13', 'Art. 20, § 3º, e art. 33, I, a', 'SNV informado com versão e segmentos cobrindo o trecho', !P.snvVersao || !seg.length ? 'erro' : gap.length ? 'alerta' : 'ok', !seg.length ? 'Nenhum segmento SNV cadastrado.' : gap.length ? 'Lacunas entre segmentos: ' + gap.join(', ') : seg.length + ' segmentos na versão ' + P.snvVersao + ', cobrindo do km ' + P.kmIni + ' ao km ' + P.kmFim + '.');
+
+    // R14 numeração
+    const vistos = {}; const dup = []; linhas.forEach(L => { if (vistos[L.item]) dup.push(L.item); vistos[L.item] = 1; });
+    const fora2 = []; R.ordem.forEach(o => { if (o.tipo !== 'l') return; const r = R.linhas[o.id]; const L = linhas.find(x => x.id === o.id); if (r.grupo && !L.item.startsWith(r.grupo + '.')) fora2.push(L.item + ' (dentro de ' + r.grupo + ')'); });
+    add('R14', 'Organização da planilha', 'Numeração de itens única e coerente com o grupo', dup.length || fora2.length ? 'alerta' : 'ok', (dup.length ? 'Itens repetidos: ' + [...new Set(dup)].join(', ') + '. ' : '') + (fora2.length ? 'Itens numerados fora do grupo: ' + fora2.slice(0, 6).join('; ') + (fora2.length > 6 ? '…' : '') + '.' : '') || 'Numeração consistente.');
+
+    // R15 histórico rastreável
+    const h = (st.icp && st.icp.historico) || {}; const semFonte = Object.keys(h).filter(k => Number(h[k].valor) > 0 && !(h[k].contrato || h[k].medicao));
+    add('R15', 'Art. 24, § 1º, e art. 84', 'Histórico executado com fonte rastreável', semFonte.length ? 'alerta' : 'ok', semFonte.length ? 'Histórico sem contrato ou medição de origem em: ' + semFonte.map(k => R.icp.regras[k] ? R.icp.regras[k].servico : k).join(', ') + '.' : 'Histórico vinculado a contrato e medição.');
+
+    // R16 método ICP
+    if (st.icp && st.icp.levantamento && st.icp.levantamento.some(r => r.sentido === 'D')) {
+      const alt = calcICP(Object.assign({}, st, { icp: Object.assign({}, st.icp, { parametros: Object.assign({}, st.icp.parametros, { metodo: R.icp.metodo === 'planilha' ? 'faixas' : 'planilha' }) }) }));
+      const diffs = Object.keys(R.icp.regras).filter(k => Math.abs(alt.regras[k].adotado - R.icp.regras[k].adotado) > 0.01).map(k => R.icp.regras[k].servico + ' ' + fmt(R.icp.regras[k].adotado) + ' → ' + fmt(alt.regras[k].adotado) + ' ' + R.icp.regras[k].unidade);
+      add('R16', 'Art. 19, II e III, e Anexo XXVII', 'Quantidades do ICP refletem as duas faixas levantadas', R.icp.metodo === 'planilha' && diffs.length ? 'alerta' : 'ok',
+        R.icp.metodo === 'planilha' ? 'O cálculo usa só a faixa crescente multiplicada por ' + R.icp.mult + ', mas o levantamento traz as duas faixas. Usando as duas: ' + (diffs.join('; ') || 'sem diferença') + '.' : 'Cálculo pelas duas faixas levantadas. Pelo método da planilha original seria: ' + (diffs.join('; ') || 'igual') + '.');
+    }
+
+    // R17 roçada mecanizada
+    const inv = st.inventario || {}; const costal = Number((inv.rocadaCostal || {}).valor) || 0, mec = Number((inv.rocadaMec || {}).valor) || 0;
+    add('R17', 'Art. 27', 'Roçada mecanizada preferencial; manual só com justificativa', costal > 0 && !(st.justificativas && st.justificativas.rocadaCostal) ? 'alerta' : 'ok', 'Inventário com ' + fmt(mec) + ' ha mecanizada e ' + fmt(costal) + ' ha costal.' + (costal > 0 ? ' A parcela costal precisa de justificativa registrada.' : ''));
+
+    // R18 roçada DNIT 182
+    add('R18', 'Art. 24, § 4º', 'Frequência de roçada pela DNIT 182/2018-PRO', R.rocada.adotado === R.rocada.sugerido ? 'ok' : 'alerta', 'Média ponderada das estações: ' + R.rocada.nerp.toFixed(2).replace('.', ',') + ' → sugerido ' + R.rocada.sugerido + ' roçadas/ano; adotado ' + R.rocada.adotado + '.');
+
+    // R19 preços SD e CD
+    const semP = Object.keys(R.linhas).filter(id => R.linhas[id].semPreco);
+    add('R19', 'Art. 33, r e s', 'Preço com e sem desoneração em todas as linhas', semP.length ? 'erro' : 'ok', semP.length ? semP.length + ' linha(s) sem preço no banco: ' + semP.slice(0, 8).map(id => (linhas.find(L => L.id === id) || {}).codigo).join(', ') : 'Todas as linhas têm preço nas duas condições. Condição mais vantajosa: ' + (R.totais.condicao === 'sd' ? 'sem desoneração' : 'com desoneração') + '.', semP);
+
+    // R20 sinalização de obras
+    const sinal = linhas.some(L => /^521|^5213/.test(L.codigo));
+    add('R20', 'Art. 44 e Anexo XIII', 'Sinalização de obras prevista para serviços na pista', sinal ? 'ok' : 'erro', sinal ? 'Dispositivos de sinalização de obras orçados.' : 'Nenhum dispositivo de sinalização de obras encontrado.');
+
+    // R21 croqui x transportes
+    const semC = []; Object.values(R.transportes).forEach(t => t.linhas.forEach(l => { if (l.semCroqui) semC.push(l.material + ' ' + l.origem + '→' + l.destino); }));
+    add('R21', 'Art. 45 e Anexo IX', 'Toda DMT de transporte vem do croqui de ocorrências', semC.length ? 'erro' : 'ok', semC.length ? 'Sem DMT no croqui: ' + [...new Set(semC)].join('; ') : 'Todas as DMTs encontradas no croqui.');
+
+    // R22 estimativas
+    const est = linhas.filter(L => /ESTIMATIVA/i.test(L.origem));
+    add('R22', 'Art. 18 e art. 24, § 1º', 'Estimativas apoiadas em justificativa técnica', est.length ? 'alerta' : 'ok', est.length ? est.length + ' linha(s) com origem "estimativa": ' + est.slice(0, 8).map(L => L.item).join(', ') + '. Precisam de nota técnica.' : 'Nenhuma quantidade por estimativa.', est.map(L => L.id));
+
+    // R24 cotações de pétreos e areia
+    const cot = st.cotacoes || [];
+    const mats = [...new Set(Object.values(st.croqui || {}).filter(c => /PEDREIRA|AREAL|CENTRO SEDE/i.test(c.origem || '')).map(c => norm(c.material)))];
+    const semCot = mats.filter(m => !cot.some(c => norm(c.material) === m || norm(c.material).includes(m) || m.includes(norm(c.material))));
+    add('R24', 'Art. 45 e Anexo VII', 'Cotação de pétreos e areia junto com o croqui', !cot.length ? 'alerta' : semCot.length ? 'alerta' : 'ok',
+      !cot.length ? 'Nenhuma cotação registrada.' : cot.length + ' cotações de ' + [...new Set(cot.map(c => c.fornecedor))].length + ' fornecedores.' + (semCot.length ? ' Materiais do croqui sem cotação: ' + semCot.join(', ') + '.' : ''));
+
+    // R25 conferência com o SNV oficial
+    if (st.snvRef && st.snvRef.length) {
+      const prob = [];
+      (P.segmentos || []).forEach(sg => { const o = st.snvRef.find(x => norm(x.codigo) === norm(sg.snv)); if (!o) prob.push(sg.snv + ' não existe no SNV importado'); else if (Math.abs(o.kmIni - sg.kmIni) > 0.05 || Math.abs(o.kmFim - sg.kmFim) > 0.05) prob.push(sg.snv + ': km ' + sg.kmIni + '–' + sg.kmFim + ' no projeto, ' + o.kmIni + '–' + o.kmFim + ' no SNV'); });
+      add('R25', 'Art. 20, § 1º, I', 'Segmentos conferem com o SNV vigente', prob.length ? 'erro' : 'ok', prob.length ? prob.join('; ') + '.' : 'Todos os segmentos existem no SNV importado com os mesmos km.');
+    } else add('R25', 'Art. 20, § 1º, I', 'Segmentos conferem com o SNV vigente', 'alerta', 'Importe a planilha do SNV vigente para conferir códigos e quilometragem.');
+
+    // R23 erros de cálculo
+    add('R23', 'Integridade do cálculo', 'Todas as expressões resolvidas', R.erros.length ? 'erro' : 'ok', R.erros.length ? R.erros.slice(0, 5).join(' · ') : 'Nenhuma referência quebrada.');
+    return out;
+  }
+  function fmt(v, d) { return Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: d == null ? 3 : d }); }
+
+  // ---------- comparação com o gabarito ----------
+  function comparar(st, R, gab) {
+    const diffs = []; let ok = 0;
+    Object.keys(gab.linhas || {}).forEach(id => {
+      const g = gab.linhas[id], r = R.linhas[id]; if (!r) { diffs.push({ id, campo: 'linha', esperado: '-', obtido: 'ausente' }); return; }
+      let bom = true;
+      [['qtd', 0.0015], ['sd', 0.011], ['cd', 0.011]].forEach(([c, tol]) => { if (g[c] != null && Math.abs((g[c] || 0) - (r[c] || 0)) > tol) { bom = false; diffs.push({ id, campo: c, esperado: g[c], obtido: r[c] }); } });
+      if (bom) ok++;
+    });
+    const t = gab.totais || {};
+    const subtotais = [];
+    (gab.resumo || []).forEach(g => {
+      if (g.item.split('.').length !== 2) return;
+      let sd = 0, cd = 0; Object.keys(R.linhas).forEach(id => { if (R.linhas[id].grupo === g.item && gab.linhas[id]) { sd += gab.linhas[id].sd || 0; cd += gab.linhas[id].cd || 0; } });
+      [['sd', sd, g.sd], ['cd', cd, g.cd]].forEach(([c, soma, plan]) => { if (Math.abs(soma - plan) > 0.011) subtotais.push({ item: g.item, titulo: g.titulo, condicao: c, somaLinhas: soma, subtotalPlanilha: plan, diferenca: soma - plan }); });
+    });
+    return { subtotais, linhasOk: ok, linhasTotal: Object.keys(gab.linhas || {}).length, diffs,
+      totais: [['Total sem desoneração', t.sd, R.totais.sd], ['Total com desoneração', t.cd, R.totais.cd], ['Conservação sem desoneração', t.conservaSD, R.totais.conservaSD], ['DSM sem desoneração', t.dsmSD, R.totais.dsmSD]]
+        .map(([n, e, o]) => ({ nome: n, esperado: e, obtido: o, ok: Math.abs((e || 0) - (o || 0)) < 0.011 })) };
+  }
+
+  const api = { compute, validar, comparar, evaluate, parse, trunc, round, calcICP };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PatoEngine = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Importador de planilhas PATO no modelo da SR/DNIT/MT (estrutura da BR-158 km 326–416,8)
+   e de arquivos avulsos (inventário, ICP, SNV, preços, cotações, histórico).
+   Depende do SheetJS (XLSX). Navegador: window.PatoImport; Node: module.exports. */
+(function (root) {
+  'use strict';
+  const num = x => { if (typeof x === 'number') return x; if (x == null || x === '') return null; const v = parseFloat(String(x).replace(/\./g, m => m).replace(',', '.')); return isNaN(v) ? null : v; };
+  const norm = s => String(s == null ? '' : s).trim().toUpperCase();
+
+  function wrap(wb) {
+    const sh = n => wb.Sheets[n];
+    const has = n => !!wb.Sheets[n];
+    const cell = (n, a) => { const s = sh(n); return s ? s[a] : undefined; };
+    const V = (n, a) => { const c = cell(n, a); return c ? (c.v instanceof Date ? c.v : c.v) : null; };
+    const F = (n, a) => { const c = cell(n, a); if (!c) return null; if (c.f != null) return '=' + c.f; return c.v; };
+    const maxRow = n => { const s = sh(n); if (!s || !s['!ref']) return 0; return XLSXref().decode_range(s['!ref']).e.r + 1; };
+    return { sh, has, V, F, maxRow, names: wb.SheetNames };
+  }
+  let XL = null; function XLSXref() { return XL.utils; }
+
+  const INV = {
+    B15: ['pista_CP', 'Faixa de pista em concreto (CP)', 'kmf'], E15: ['pista_CA', 'Faixa de pista em concreto asfáltico (CA)', 'kmf'],
+    H15: ['pista_TS', 'Faixa de pista em tratamento superficial (TS)', 'kmf'], K15: ['pista_NP', 'Faixa de pista não pavimentada (NP)', 'kmf'],
+    B20: ['acost_CP', 'Acostamento em concreto (CP)', 'kmfa'], E20: ['acost_CA', 'Acostamento em CA', 'kmfa'],
+    H20: ['acost_TS', 'Acostamento em TS', 'kmfa'], K20: ['acost_NP', 'Acostamento não pavimentado', 'kmfa'],
+    Q16: ['meiofio_C', 'Meio-fio em concreto', 'm'], W16: ['meiofio_NR', 'Meio-fio não revestido', 'm'],
+    N20: ['sarjeta_C', 'Sarjeta em concreto', 'm'], T20: ['sarjeta_NR', 'Sarjeta não revestida', 'm'],
+    N25: ['valetaCorte_C', 'Valeta de proteção de corte revestida', 'm'], T25: ['valetaCorte_NR', 'Valeta de proteção de corte não revestida', 'm'],
+    N29: ['valetaAterro_C', 'Valeta de proteção de aterro revestida', 'm'], T29: ['valetaAterro_NR', 'Valeta de proteção de aterro não revestida', 'm'],
+    O34: ['descida', "Descidas d'água", 'm'], O39: ['bueiro', 'Volume de bueiros', 'm³'], O44: ['caiacao', 'Área de caiação', 'm²'],
+    O49: ['oae', 'Obras de arte especiais', 'm'], C24: ['cerca', 'Cerca', 'km'], C29: ['rocadaCostal', 'Roçada com roçadeira costal', 'ha'],
+    C34: ['rocadaMec', 'Roçada mecanizada', 'ha'], C39: ['capina', 'Capina', 'm²'], C44: ['gramada', 'Área gramada', 'm²'],
+    AC15: ['placas', 'Área de placas', 'm²'], AC22: ['suportePL', 'Suportes de placa poliméricos', 'un'],
+    AF27: ['tachaBi', 'Tachas e tachões bidirecionais', 'un'], AA27: ['tachaMono', 'Tachas e tachões monodirecionais', 'un'],
+    AA36: ['defensa', 'Defensas', 'm'], AA41: ['newJersey', 'Barreira New Jersey', 'm'],
+  };
+  const INV_SHEETS = ['RESUMO_INVENT', 'RESUMO DO INVENTÁRIO', 'RESUMO DO INVENTARIO'];
+
+  function lerInventario(W, aviso) {
+    const s = INV_SHEETS.find(n => W.has(n)); if (!s) return null;
+    const out = {};
+    Object.keys(INV).forEach(c => { const [k, rot, un] = INV[c]; out[k] = { valor: num(W.V(s, c)) || 0, rotulo: rot, unidade: un, fonte: s + '!' + c, grupo: 'Resumo do inventário' }; });
+    return { aba: s, itens: out };
+  }
+
+  // ---------- planilha completa ----------
+  function importarPATO(wb, XLSX) {
+    XL = XLSX; const W = wrap(wb); const avisos = [];
+    const exig = ['CAPA', 'PATO', 'BD', 'RESUMO_INVENT', 'CALCULO_ICP', 'ICP'];
+    const falta = exig.filter(n => !W.has(n));
+    if (falta.length) throw new Error('A planilha não segue o modelo esperado. Faltam as abas: ' + falta.join(', ') + '.');
+    const db = W.V('CAPA', 'B85');
+    const dbStr = db instanceof Date ? db.getFullYear() + '-' + String(db.getMonth() + 1).padStart(2, '0') : String(db || '');
+    const segTxt = String(W.V('CAPA', 'D77') || '');
+    const kms = (segTxt.match(/[\d.,]+/g) || []).map(x => num(x.replace('.', '').replace(',', '.')));
+    const projeto = {
+      nome: 'PATO ' + (W.V('CAPA', 'D74') || '') + ' ' + segTxt, rodovia: W.V('CAPA', 'D74') || '', trecho: W.V('CAPA', 'D75'), subtrecho: W.V('CAPA', 'D76'), segmento: segTxt,
+      kmIni: kms[0] || null, kmFim: kms[1] || null, extensao: Math.round((num(W.V('CAPA', 'D78')) || 0) * 1000) / 1000, snv: W.V('CAPA', 'D79'),
+      snvVersao: String(W.V('CAPA', 'D80') || '').replace(/[()]/g, '').replace(/vers[aã]o/i, '').trim(), prazoAnos: num(W.V('CAPA', 'D81')) || 1, periodoMeses: 12,
+      dataBase: dbStr, unidadeLocal: W.has('CAD_SEG') ? (W.V('CAD_SEG', 'H9') || '') : '', uf: 'MT', tipo: 'pavimentada', aberturaLicitacao: '',
+    };
+    const segs = [];
+    if (W.has('CAD_SEG')) for (let r = 20; r < 80; r++) {
+      const s = W.V('CAD_SEG', 'A' + r); if (!s || !/^\d{3}[A-Z]{3}\d{4}/.test(String(s))) continue;
+      const pr = W.has('CAD_PISTA') ? (() => { for (let q = 18; q < 80; q++) if (String(W.V('CAD_PISTA', 'A' + q)) === String(s)) return q; return null; })() : null;
+      const kmv = x => num(String(x == null ? '' : x).replace(',', '.'));
+      segs.push({ snv: String(s), tipoPista: W.V('CAD_SEG', 'B' + r), kmIni: kmv(W.V('CAD_SEG', 'C' + r)), kmFim: kmv(W.V('CAD_SEG', 'D' + r)),
+        latIni: W.V('CAD_SEG', 'E' + r), lonIni: W.V('CAD_SEG', 'F' + r), latFim: W.V('CAD_SEG', 'G' + r), lonFim: W.V('CAD_SEG', 'H' + r),
+        revestimento: pr ? W.V('CAD_PISTA', 'I' + pr) : null, faixas: pr ? num(W.V('CAD_PISTA', 'J' + pr)) : null, largura: pr ? num(W.V('CAD_PISTA', 'K' + pr)) : null });
+    }
+    projeto.segmentos = segs;
+    const inventario = lerInventario(W).itens;
+    const invkey = c => { if (INV[c]) return INV[c][0]; const k = 'inv_' + c; if (!inventario[k]) { inventario[k] = { valor: num(W.V('RESUMO_INVENT', c)) || 0, rotulo: 'Resumo do inventário, célula ' + c, unidade: '', fonte: 'RESUMO_INVENT!' + c, grupo: 'Resumo do inventário' }; avisos.push('Célula do inventário sem nome padrão: ' + c); } return k; };
+
+    // ICP
+    const lev = []; const lvl = (r, cols) => { const nm = ['Alta', 'Média', 'Baixa', 'SR']; for (let i = 0; i < 4; i++) if (norm(W.V('ICP', cols[i] + r)) === 'X') return nm[i]; return 'SR'; };
+    for (let r = 5; r < 1000; r++) {
+      if (W.V('ICP', 'E' + r) == null) continue;
+      const ki = num(W.V('ICP', 'F' + r)), kf = num(W.V('ICP', 'G' + r)); if (ki == null || kf == null) continue;
+      lev.push({ sentido: kf > ki ? 'C' : 'D', kmIni: ki, kmFim: kf, panela: lvl(r, 'IJKL'), remendo: lvl(r, 'MNOP'), trinca: lvl(r, 'QRST'), intervPrim: W.V('ICP', 'W' + r) || '', intervSec: W.V('ICP', 'X' + r) || '' });
+    }
+    const ICPROW = { 5: 'RL', 6: 'TP', 7: 'RP', 8: 'COR', 9: 'FSD', 10: 'FSC', 11: 'MICRO' };
+    const hist = {}; Object.keys(ICPROW).forEach(r => { const f = W.F('CALCULO_ICP', 'K' + r), v = num(W.V('CALCULO_ICP', 'K' + r)); hist[ICPROW[r]] = { valor: v || 0, memoria: f == null ? '' : String(f), fonte: 'Digitado na CALCULO_ICP (sem vínculo com medição)' }; });
+    const icp = {
+      parametros: { larguraFaixa: num(W.V('CALCULO_ICP', 'O3')) || 3.6, fatorFaixas: num(W.V('CALCULO_ICP', 'H5')) || 2, metodo: 'planilha' },
+      levantamento: lev, historico: hist,
+      regras: [
+        { id: 'RL', servico: 'Reparo localizado', classes: [['W', 'RL/TP/RP']], neExpr: String(num(W.V('CALCULO_ICP', 'O5')) || 10), unidade: 'm³', neFonte: 'Manual de Conservação (IPR 710)' },
+        { id: 'TP', servico: 'Tapa-buraco', classes: [['W', 'RL/TP/RP']], neExpr: String(num(W.V('CALCULO_ICP', 'O6')) || 8), unidade: 'm³', neFonte: 'Manual de Conservação (IPR 710)' },
+        { id: 'RP', servico: 'Remendo profundo', classes: [['W', 'RL/TP/RP'], ['W', 'REMENDO PROFUNDO']], neExpr: '1000*largura*0.25*' + (num(W.V('CALCULO_ICP', 'O7')) || 0.02), unidade: 'm³', neFonte: 'Percentual da faixa, espessura 0,25 m' },
+        { id: 'COR', servico: 'Correção de defeitos', classes: [['W', 'CORREÇÃO+FS DESC']], neExpr: '1000*largura*0.05*' + (num(W.V('CALCULO_ICP', 'O8')) || 0.1), unidade: 'm³', neFonte: 'Percentual da faixa, espessura 0,05 m' },
+        { id: 'FSD', servico: 'Fresagem descontínua', classes: [['X', 'CORREÇÃO+FS DESC'], ['X', 'FS DESC+MICRO']], neExpr: '1000*largura*0.05*' + (num(W.V('CALCULO_ICP', 'O9')) || 0.2), unidade: 'm³', neFonte: 'Percentual da faixa, espessura 0,05 m' },
+        { id: 'FSC', servico: 'Fresagem contínua', classes: [['X', 'FS CONT']], neExpr: '1000*largura*0.05*' + (num(W.V('CALCULO_ICP', 'O10')) || 1), unidade: 'm³', neFonte: '100% da faixa, espessura 0,05 m' },
+        { id: 'MICRO', servico: 'Microrrevestimento a frio', somaRegras: ['COR', 'FSD'], neExpr: '1000*largura*' + (num(W.V('CALCULO_ICP', 'O11')) || 1), unidade: 'm²', neFonte: '100% da faixa' },
+      ],
+    };
+    const gabIcp = {}; Object.keys(ICPROW).forEach(r => gabIcp[ICPROW[r]] = { km: num(W.V('CALCULO_ICP', 'D' + r)), calc: num(W.V('CALCULO_ICP', 'I' + r)), adotado: num(W.V('CALCULO_ICP', 'M' + r)) });
+
+    // UN.DIA
+    const undia = {}; const UNDIA_START = {};
+    if (W.has('UN_DIA')) {
+      let frente = null, ini = null;
+      for (let r = 14; r < W.maxRow('UN_DIA') + 1; r++) {
+        const b = String(W.V('UN_DIA', 'B' + r) || '').trim();
+        if (/^GRUPO DE DESEMPENHO/i.test(b)) frente = 'GD'; else if (/^SERVI[CÇ]OS DE CONSERVA/i.test(b)) frente = 'CONSERVA'; else if (/^DSM \d/.test(b)) frente = b;
+        const k = W.V('UN_DIA', 'K' + r);
+        if (frente && k != null && /^\d+$/.test(String(k))) { (undia[frente] = undia[frente] || {})[String(k)] = num(W.V('UN_DIA', 'L' + r)) || 0; if (!Object.values(UNDIA_START).includes(frente) || UNDIA_START[r] === undefined) { if (!Object.values(UNDIA_START).includes(frente)) UNDIA_START[r] = frente; } }
+      }
+    }
+    const undiaFrente = startRow => UNDIA_START[startRow] || Object.entries(UNDIA_START).filter(([r]) => Number(r) <= startRow).sort((a, b) => b[0] - a[0]).map(x => x[1])[0] || 'CONSERVA';
+
+    // croqui
+    const croqui = {}; let lastMat = null;
+    if (W.has('CROQUI')) for (let r = 22; r < 120; r++) {
+      const key = W.V('CROQUI', 'N' + r); if (!key) continue;
+      const g = c => num(W.V('CROQUI', c + r));
+      const mat = W.V('CROQUI', 'G' + r) || lastMat; lastMat = mat;
+      croqui[String(key)] = { material: mat || '', origem: W.V('CROQUI', 'J' + r) || '', destino: W.V('CROQUI', 'L' + r) || '', LN: g('O'), RP: g('Q'), P: g('S'), Pu: g('W') };
+    }
+    // FIT
+    const fit = []; const fitStart = {};
+    if (W.has('FIT')) { let grp = 'CONSERVA'; for (let r = 14; r < 60; r++) {
+      const c = String(W.V('FIT', 'C' + r) || '');
+      if (/^CONSERVA/i.test(c)) { grp = 'CONSERVA'; continue; } if (/^DSM \d/.test(c)) { grp = c.trim(); fitStart[r + 1] = grp; continue; }
+      if (W.V('FIT', 'I' + r) == null || !c) continue;
+      if (grp === 'CONSERVA' && !fitStart[r] && !Object.values(fitStart).includes('CONSERVA')) fitStart[r] = 'CONSERVA';
+      fit.push({ frente: grp, codigo: c, chave: W.V('FIT', 'I' + r), vmdf: num(W.V('FIT', 'M' + r)), fitPlanilha: num(W.V('FIT', 'P' + r)) });
+    } }
+    const COLMAP = { 2: 'LN', 4: 'RP', 6: 'P', 10: 'Pu' };
+
+    // transportes
+    const transportes = []; const gabTransp = {};
+    const txExpr = (f, s) => { if (f == null) return '0'; if (typeof f !== 'string' || !f.startsWith('=')) return String(f); return f.slice(1).replace(/\$?G\$?(\d+)/g, (m, n) => String(num(W.V(s, 'G' + n)))); };
+    ['TRANSPORTES_CONSERVA', 'TRANSPORTES_DSM'].forEach(sheet => {
+      if (!W.has(sheet)) return; let frente = sheet === 'TRANSPORTES_CONSERVA' ? 'CONSERVA' : null; const maxr = W.maxRow(sheet);
+      for (let r = 1; r <= maxr; r++) {
+        const b = W.V(sheet, 'B' + r);
+        if (typeof b === 'string' && /^DSM/.test(b)) frente = b.trim();
+        if (b != null && W.V(sheet, 'B' + (r + 1)) === 'CÓDIGO') {
+          const blk = { id: sheet + '-' + r, frente, codigo: String(b), descricao: W.V(sheet, 'C' + r), linhas: [] };
+          let rr = r + 3;
+          while (rr <= maxr && !['TOTAL:', 'TOTAL'].includes(String(W.V(sheet, 'B' + rr) || '').trim()) && !String(W.F(sheet, 'O' + rr) || '').startsWith('=SUM(')) {
+            const code = W.V(sheet, 'B' + rr);
+            if (code != null) {
+              const e = String(W.F(sheet, 'E' + rr) || ''); const m = e.match(/PATO!\$D\$(\d+):\$J\$(\d+)/);
+              const mm = String(W.F(sheet, 'M' + rr) || ''); const mc = mm.match(/CROQUI!\$?N\$?22:\$?[A-Z]+\$?\d+,(\d+)/);
+              const nn = W.F(sheet, 'N' + rr); const fr = String(nn || '').match(/FIT!\$I\$(\d+):\$P\$(\d+)/);
+              const key = '' + W.V(sheet, 'D' + rr) + W.V(sheet, 'J' + rr) + W.V(sheet, 'K' + rr);
+              let fitFrente = null; if (fr) { const st0 = Number(fr[1]); fitFrente = fitStart[st0] || (st0 < 21 ? 'CONSERVA' : null) || fit.filter(x => x.frente !== 'CONSERVA').map(x => x.frente)[0]; if (st0 === 15) fitFrente = 'CONSERVA'; }
+              blk.linhas.push({ servico: String(code), material: W.V(sheet, 'D' + rr), origem: W.V(sheet, 'J' + rr), destino: W.V(sheet, 'K' + rr), chave: key,
+                consumoExpr: txExpr(W.F(sheet, 'G' + rr), sheet), consumoMemoria: String(W.F(sheet, 'G' + rr)), faixaPATO: m ? [Number(m[1]), Number(m[2])] : null,
+                colunaDMT: mc ? COLMAP[Number(mc[1])] : null, dmtPlanilha: num(W.V(sheet, 'M' + rr)), usaFIT: !!fr, fitFrente, fitFixo: fr ? null : num(nn), momentoPlanilha: num(W.V(sheet, 'O' + rr)) });
+              if (!m) avisos.push('Transporte sem faixa da planilha PATO: ' + sheet + ' linha ' + rr);
+            }
+            rr++;
+          }
+          blk.totalPlanilha = num(W.V(sheet, 'O' + rr)); transportes.push(blk); gabTransp[sheet + '!O' + rr] = blk.id; r = rr;
+        }
+      }
+    });
+    // FIT das frentes de DSM pela posição real na aba
+    if (W.has('FIT')) { let grp = 'CONSERVA'; const starts = {}; for (let r = 14; r < 60; r++) { const c = String(W.V('FIT', 'C' + r) || ''); if (/^DSM \d/.test(c)) grp = c.trim(); else if (W.V('FIT', 'I' + r) != null && !(grp in starts)) starts[grp] = r; }
+      const inv2 = {}; Object.keys(starts).forEach(g => inv2[starts[g]] = g);
+      transportes.forEach(b => { const sheet = b.id.slice(0, b.id.lastIndexOf('-')); const r0 = Number(b.id.slice(b.id.lastIndexOf('-') + 1)); let rr = r0 + 3; b.linhas.forEach(l => { while (W.V(sheet, 'B' + rr) == null) rr++; const fr = String(W.F(sheet, 'N' + rr) || '').match(/FIT!\$I\$(\d+)/); if (fr && inv2[Number(fr[1])]) l.fitFrente = inv2[Number(fr[1])]; rr++; }); });
+    }
+
+    // desempenho
+    const invExpr = f => { let s = String(f); if (s.startsWith('=')) s = s.slice(1); return s.replace(/RESUMO_INVENT!\$?([A-Z]+)\$?(\d+)/g, (m, a, b) => 'inv("' + invkey(a + b) + '")'); };
+    const desempenho = { codigo: 'GD', descricao: 'Conservação da faixa de domínio e limpeza de dispositivos', linhas: [] };
+    if (W.has('DESEMPENHO')) { let grupo = null; for (let r = 18; r < 40; r++) {
+      const b = W.V('DESEMPENHO', 'B' + r); if (b == null) continue; if (/^GD/.test(String(b))) { grupo = W.V('DESEMPENHO', 'C' + r); continue; } if (!/^\d/.test(String(b))) continue;
+      const d = W.F('DESEMPENHO', 'D' + r), e = W.F('DESEMPENHO', 'E' + r), fq = W.F('DESEMPENHO', 'F' + r), h = W.F('DESEMPENHO', 'H' + r);
+      const row = { codigo: String(b), grupo, memoria: W.V('DESEMPENHO', 'G' + r), unidade: W.V('DESEMPENHO', 'I' + r), qtdPorKmPlanilha: num(W.V('DESEMPENHO', 'H' + r)) };
+      if (d === '-' || d == null || W.V('DESEMPENHO', 'D' + r) === '-') { const m = String(h).match(/UN_DIA!\$K\$(\d+)/); row.auxiliar = true; row.qtdPorKmExpr = m ? 'undia("GD","' + b + '")' : String(num(W.V('DESEMPENHO', 'H' + r)) || 0); }
+      else { row.qtdTotalExpr = invExpr(d); row.ne = num(e); row.freqExpr = /NE_ROCADA/.test(String(fq)) ? 'neRocada' : String(num(fq)); }
+      desempenho.linhas.push(row);
+    } desempenho.precoMesPlanilhaSD = num(W.V('DESEMPENHO', 'K36')); desempenho.precoMesPlanilhaCD = num(W.V('DESEMPENHO', 'M36')); }
+    const rocada = { estacoes: [], nePlanilha: W.has('NE_ROCADA') ? num(W.V('NE_ROCADA', 'H11')) : null };
+    if (W.has('NE_ROCADA')) for (let r = 3; r < 15; r++) { const c = W.V('NE_ROCADA', 'C' + r); if (c == null || !num(W.V('NE_ROCADA', 'G' + r))) continue; rocada.estacoes.push({ codigo: String(c), uf: W.V('NE_ROCADA', 'D' + r), nome: W.V('NE_ROCADA', 'E' + r), municipio: W.V('NE_ROCADA', 'F' + r), distancia: num(W.V('NE_ROCADA', 'G' + r)), nere: num(W.V('NE_ROCADA', 'H' + r)) }); }
+
+    // preços
+    const precos = {};
+    for (let r = 4; r < Math.max(200, W.maxRow('BD') + 1); r++) {
+      const c = W.V('BD', 'B' + r); if (c == null) continue; const sd = num(W.V('BD', 'E' + r)), cd = num(W.V('BD', 'F' + r)); if (sd == null && cd == null) continue;
+      const fe = String(W.F('BD', 'E' + r) || '');
+      const fonte = /onerado/.test(fe) ? 'SICRO (composições do Compor, arquivo externo)' : /RESUMO_ANP/.test(fe) ? 'Binômio de betuminosos' : /DESEMPENHO/.test(fe) ? 'Grupo de desempenho (calculado)' : /(ADM_LOCAL|CANTEIRO|USINA|MOB|E125)/.test(fe) ? 'Planilha auxiliar (administração, canteiro, usina ou mobilização)' : 'Valor fixo';
+      precos[String(c)] = { descricao: W.V('BD', 'C' + r), unidade: W.V('BD', 'D' + r), sd, cd, fonte };
+    }
+    // binômio
+    const binomio = [];
+    if (W.has('BINOMIO_ANP')) {
+      const s = W.sh('BINOMIO_ANP'); const R = XL.utils.decode_range(s['!ref']);
+      const rowVals = r => { const o = []; for (let c = R.s.c; c <= R.e.c; c++) { const x = s[XL.utils.encode_cell({ r: r - 1, c })]; if (x && x.v !== '' && x.v != null) o.push(x.v); } return o; };
+      let cur = null; let pend = 0;
+      for (let r = 1; r <= R.e.r + 1; r++) {
+        const v = rowVals(r); if (!v.length) continue;
+        if (typeof v[0] === 'string' && v[0].startsWith('CUSTO DO MATERIAL BETUMINOSO')) { cur = { material: null, origens: [] }; binomio.push(cur); continue; }
+        if (!cur) continue;
+        if (!cur.material && typeof v[0] === 'string' && !v[0].startsWith('COM BASE') && v.length <= 3 && !/ORIGEM/.test(v[0])) { cur.material = v[0]; continue; }
+        if (typeof v[0] === 'string' && /^[RD]-\d$/.test(v[0].trim())) cur.origens.push({ origem: v[0].trim(), uf: v[1], local: String(v[2]).trim() });
+        if (v.some(x => typeof x === 'string' && /\) TOTAL/.test(x))) pend = r;
+        if (pend && r === pend + 1) { v.filter(x => typeof x === 'number').forEach((x, i) => { if (cur.origens[i]) cur.origens[i].aquisicao = Math.round(x * 100) / 100; }); }
+        if (pend && r === pend + 2) { v.filter(x => typeof x === 'number').forEach((x, i) => { if (cur.origens[i]) cur.origens[i].transporte = Math.round(x * 100) / 100; }); pend = 0; }
+      }
+    }
+
+    // linhas do PATO
+    const linhas = [], grupos = [], rows = {};
+    const maxP = W.maxRow('PATO');
+    for (let r = 15; r <= maxP; r++) {
+      const c = W.V('PATO', 'C' + r), d = W.V('PATO', 'D' + r), f = W.F('PATO', 'F' + r);
+      if (typeof c === 'string' && /^\d\d(\.\d\d)*(-[A-Z])?$/.test(c.trim())) {
+        if (d == null || f == null) { const t = ['D', 'E', 'F'].map(x => W.V('PATO', x + r)).find(x => typeof x === 'string' && x.length > 6) || ''; grupos.push({ id: 'L' + r, item: c.trim(), titulo: String(t).trim(), linha: r }); continue; }
+        rows[r] = true; linhas.push({ id: 'L' + r, linha: r, item: c.trim() });
+      }
+    }
+    const conv = (expr, r, kind) => {
+      if (expr == null) return '0'; if (typeof expr !== 'string') return String(expr); if (!expr.startsWith('=')) return String(num(expr));
+      let s = expr.slice(1);
+      const outros = (s.match(/([A-Z_]+)!/g) || []).map(x => x.slice(0, -1));
+      const ok = ['RESUMO_INVENT', 'CALCULO_ICP', 'TRANSPORTES_CONSERVA', 'TRANSPORTES_DSM', 'UN_DIA'];
+      if (outros.some(o => !ok.includes(o))) {
+        const k = 'cad_L' + r; inventario[k] = { valor: num(W.V('PATO', kind + r)) || 0, rotulo: String(W.V('PATO', 'E' + r) || ''), unidade: W.V('PATO', 'G' + r) || '', fonte: 'Cadastro: ' + s.slice(0, 160), grupo: 'Quantidades de cadastro' };
+        return 'inv("' + k + '")';
+      }
+      s = s.replace(/VLOOKUP\(\$?D\$?\d+,UN_DIA!\$K\$(\d+):\$L\$\d+,2,FALSE\)/g, (m, a) => 'undia("' + undiaFrente(Number(a)) + '",codigo)');
+      s = s.replace(/RESUMO_INVENT!\$?([A-Z]+)\$?(\d+)/g, (m, a, b) => 'inv("' + invkey(a + b) + '")');
+      s = s.replace(/CALCULO_ICP!\$?M\$?(\d+)/g, (m, a) => 'icp("' + ICPROW[a] + '")');
+      s = s.replace(/CALCULO_ICP!\$?D\$?(\d+)/g, (m, a) => 'icpKm("' + ICPROW[a] + '")');
+      s = s.replace(/(TRANSPORTES_CONSERVA|TRANSPORTES_DSM)!\$?O\$?(\d+)/g, (m, a, b) => { const id = gabTransp[a + '!O' + b]; if (!id) avisos.push('Total de transporte não encontrado: ' + a + '!O' + b); return 'transp("' + id + '")'; });
+      s = s.split('$R$7').join('prazo').split('PI()').join('PI');
+      s = s.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+      s = s.replace(/(^|[^A-Z])\$?D\$?9(?!\d)/g, '$1ext');
+      s = s.replace(/\$?([FHJ])\$?(\d+)/g, (m, col, n) => { if (!rows[n]) avisos.push('Referência a linha que não é item: ' + col + n + ' na linha ' + r); return ({ J: 'qtd', F: 'base', H: 'fator' })[col] + '("L' + n + '")'; });
+      return s;
+    };
+    const gab = { linhas: {}, icp: gabIcp, transportes: {} };
+    linhas.forEach(L => {
+      const r = L.linha; const g = c => W.F('PATO', c + r), gv = c => W.V('PATO', c + r);
+      L.origem = String(g('B') || '').trim(); L.codigo = String(g('D')).trim(); L.descricao = gv('E'); L.unidade = gv('K'); L.unidadeBase = gv('G');
+      const jf = String(g('J'));
+      if (/CALCULO_ICP/.test(jf)) { L.modo = 'icp'; L.icpRegra = ICPROW[jf.match(/M(\d+)/)[1]]; L.baseExpr = conv(g('F'), r, 'F'); L.fatorExpr = ''; }
+      else { const m = jf.match(/^=(TRUNC|ROUND)\(.*,(\d)\)$/); L.modo = m ? m[1].toLowerCase() : 'trunc'; L.casas = m ? Number(m[2]) : 3; L.baseExpr = conv(g('F'), r, 'F'); L.fatorExpr = conv(g('H'), r, 'H'); }
+      L.memoriaPlanilha = { F: String(g('F')), H: String(g('H')), J: jf };
+      gab.linhas[L.id] = { base: num(gv('F')), fator: num(gv('H')), qtd: num(gv('J')), puSD: num(gv('L')), sd: num(gv('M')), puCD: num(gv('N')), cd: num(gv('O')) };
+    });
+    // totais da planilha: procura as linhas de total
+    let tSD = null, tCD = null, cSD = null, cCD = null, dSD = null, dCD = null;
+    for (let r = 15; r <= maxP; r++) { const t = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(x => W.V('PATO', x + r)).filter(x => typeof x === 'string').join(' ').toUpperCase();
+      if (/TOTAL\s+GERAL/.test(t)) { tSD = num(W.V('PATO', 'M' + r)); tCD = num(W.V('PATO', 'O' + r)); }
+      else if (/PREÇO TOTAL DOS SERVIÇOS DE CONSERVAÇÃO/.test(t)) { cSD = num(W.V('PATO', 'M' + r)); cCD = num(W.V('PATO', 'O' + r)); }
+      else if (/PREÇO TOTAL DOS DEMAIS/.test(t)) { dSD = num(W.V('PATO', 'M' + r)); dCD = num(W.V('PATO', 'O' + r)); } }
+    gab.totais = { sd: tSD, cd: tCD, conservaSD: cSD, conservaCD: cCD, dsmSD: dSD, dsmCD: dCD };
+    if (W.has('QUANTIDADES')) for (let r = 15; r < W.maxRow('QUANTIDADES') + 1; r++) { const b = String(W.V('QUANTIDADES', 'B' + r) || ''); if (/TOTAL\s+GERAL/i.test(b)) gab.totais.contratoSD = num(W.V('QUANTIDADES', 'I' + r)); }
+    gab.resumo = [];
+    if (W.has('RESUMO_PATO')) for (let r = 17; r < 40; r++) { const it = W.V('RESUMO_PATO', 'B' + r); if (it && /^\d\d/.test(String(it))) gab.resumo.push({ item: String(it), titulo: W.V('RESUMO_PATO', 'C' + r), sd: num(W.V('RESUMO_PATO', 'D' + r)), cd: num(W.V('RESUMO_PATO', 'F' + r)) }); }
+    transportes.forEach(b => gab.transportes[b.id] = b.totalPlanilha);
+    const adm = { engenheiroCoef: W.has('ADM_LOCAL') ? num(W.V('ADM_LOCAL', 'F24')) : null, vigia: 0 };
+    return { estado: { versao: 1, projeto, inventario, icp, undia, croqui, fit, transportes, desempenho, rocada, precos, binomio, grupos, linhas, adm, gabarito: gab, parametros: { dsmMultiplicaPrazo: false }, cotacoes: [], justificativas: {} }, avisos };
+  }
+
+  // ---------- arquivos avulsos ----------
+  function tabela(wb, XLSX, prefer) {
+    const nome = (prefer || []).find(n => wb.Sheets[n]) || wb.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[nome], { header: 1, defval: null, raw: true });
+    return { nome, rows };
+  }
+  function acharCabecalho(rows, testes) {
+    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+      const r = rows[i].map(x => norm(x));
+      const idx = {}; let ok = true;
+      for (const [k, re] of Object.entries(testes)) { const j = r.findIndex(c => re.test(c)); if (j < 0) { if (!k.endsWith('?')) { ok = false; break; } } else idx[k.replace('?', '')] = j; }
+      if (ok) return { linha: i, idx };
+    }
+    return null;
+  }
+  function importarSNV(wb, XLSX, rodovia) {
+    const { rows } = tabela(wb, XLSX);
+    const h = acharCabecalho(rows, { codigo: /^C[ÓO]D|SNV/, kmIni: /KM.*INI|INICIAL/, kmFim: /KM.*FIN|FINAL/, 'ext?': /EXTENS/, 'sup?': /SUPERF|SITUA/, 'br?': /^BR$|RODOVIA/, 'uf?': /^UF$/, 'local?': /LOCAL|IN[ÍI]CIO/ });
+    if (!h) throw new Error('Não encontrei as colunas de código, km inicial e km final do SNV.');
+    const out = [];
+    rows.slice(h.linha + 1).forEach(r => { const c = r[h.idx.codigo]; if (!c) return; out.push({ codigo: String(c).trim(), kmIni: num(r[h.idx.kmIni]), kmFim: num(r[h.idx.kmFim]), extensao: h.idx.ext != null ? num(r[h.idx.ext]) : null, superficie: h.idx.sup != null ? r[h.idx.sup] : null, uf: h.idx.uf != null ? r[h.idx.uf] : null, br: h.idx.br != null ? r[h.idx.br] : null }); });
+    return out;
+  }
+  function importarICPAvulso(wb, XLSX) {
+    if (wb.Sheets.ICP && wb.Sheets.CALCULO_ICP) { XL = XLSX; return importarPATO(wb, XLSX).estado.icp.levantamento; }
+    const { rows } = tabela(wb, XLSX);
+    const h = acharCabecalho(rows, { kmIni: /KM.*INI/, kmFim: /KM.*FIN/, panela: /PANELA/, remendo: /REMENDO/, trinca: /TRINC/, 'sentido?': /SENTIDO|FAIXA|PISTA/, 'prim?': /PRIM/, 'sec?': /SECUND/ });
+    if (!h) throw new Error('Colunas esperadas: km inicial, km final, sentido, panela, remendo, trinca, intervenção primária e secundária.');
+    const nv = x => { const s = norm(x); return s.startsWith('A') ? 'Alta' : s.startsWith('M') ? 'Média' : s.startsWith('B') ? 'Baixa' : 'SR'; };
+    return rows.slice(h.linha + 1).filter(r => num(r[h.idx.kmIni]) != null).map(r => { const ki = num(r[h.idx.kmIni]), kf = num(r[h.idx.kmFim]); const sn = h.idx.sentido != null ? norm(r[h.idx.sentido]) : ''; return { sentido: sn.startsWith('D') ? 'D' : sn.startsWith('C') ? 'C' : (kf > ki ? 'C' : 'D'), kmIni: ki, kmFim: kf, panela: nv(r[h.idx.panela]), remendo: nv(r[h.idx.remendo]), trinca: nv(r[h.idx.trinca]), intervPrim: h.idx.prim != null ? (r[h.idx.prim] || '') : '', intervSec: h.idx.sec != null ? (r[h.idx.sec] || '') : '' }; });
+  }
+  function importarPrecos(wb, XLSX) {
+    if (wb.Sheets.BD) { const W = wrap(wb); XL = XLSX; const p = {}; for (let r = 4; r < W.maxRow('BD') + 1; r++) { const c = W.V('BD', 'B' + r); const sd = num(W.V('BD', 'E' + r)), cd = num(W.V('BD', 'F' + r)); if (c != null && (sd != null || cd != null)) p[String(c)] = { descricao: W.V('BD', 'C' + r), unidade: W.V('BD', 'D' + r), sd, cd, fonte: 'Importado da aba BD' }; } return p; }
+    const { rows } = tabela(wb, XLSX);
+    const h = acharCabecalho(rows, { codigo: /C[ÓO]D/, descricao: /DESCRI|DISCRIM/, 'unidade?': /^UN/, sd: /SEM DESON|ONERADO$|^ONERADO|S\/ ?DESON|PRE[ÇC]O.*SD|CUSTO UNIT/, 'cd?': /COM DESON|DESONERADO|C\/ ?DESON|PRE[ÇC]O.*CD/ });
+    if (!h) throw new Error('Colunas esperadas: código, descrição, unidade, preço sem desoneração e preço com desoneração.');
+    const p = {}; rows.slice(h.linha + 1).forEach(r => { const c = r[h.idx.codigo]; if (c == null || c === '') return; p[String(c).trim()] = { descricao: r[h.idx.descricao], unidade: h.idx.unidade != null ? r[h.idx.unidade] : '', sd: num(r[h.idx.sd]), cd: h.idx.cd != null ? num(r[h.idx.cd]) : num(r[h.idx.sd]), fonte: 'Importado' }; });
+    return p;
+  }
+  function importarInventarioAvulso(wb, XLSX) {
+    XL = XLSX; const W = wrap(wb); const r = lerInventario(W); if (r) return r.itens;
+    const { rows } = tabela(wb, XLSX); const h = acharCabecalho(rows, { chave: /CHAVE|ITEM|ELEMENTO/, valor: /VALOR|QUANT/, 'unidade?': /^UN/ });
+    if (!h) throw new Error('Envie a aba RESUMO_INVENT do modelo ou uma tabela com as colunas chave e valor.');
+    const o = {}; rows.slice(h.linha + 1).forEach(x => { const k = x[h.idx.chave]; if (k) o[String(k).trim()] = { valor: num(x[h.idx.valor]) || 0, unidade: h.idx.unidade != null ? x[h.idx.unidade] : '' }; }); return o;
+  }
+  function importarCotacoes(wb, XLSX) {
+    const { rows } = tabela(wb, XLSX, ['COTACOES', 'COTAÇÕES']);
+    const h = acharCabecalho(rows, { material: /MATERIAL|INSUMO/, fornecedor: /FORNEC|EMPRESA/, preco: /PRE[ÇC]O|VALOR/, 'unidade?': /^UN/, 'data?': /DATA/, 'municipio?': /MUNIC|LOCAL|ORIGEM/, 'dmt?': /DMT|DIST/ });
+    if (!h) throw new Error('Colunas esperadas: material, fornecedor, preço, unidade, data, município e DMT.');
+    return rows.slice(h.linha + 1).filter(r => r[h.idx.material] && r[h.idx.fornecedor]).map(r => ({ material: String(r[h.idx.material]).trim(), fornecedor: String(r[h.idx.fornecedor]).trim(), preco: num(r[h.idx.preco]), unidade: h.idx.unidade != null ? r[h.idx.unidade] : '', data: h.idx.data != null ? (r[h.idx.data] instanceof Date ? r[h.idx.data].toISOString().slice(0, 10) : r[h.idx.data]) : '', municipio: h.idx.municipio != null ? r[h.idx.municipio] : '', dmt: h.idx.dmt != null ? num(r[h.idx.dmt]) : null }));
+  }
+  function importarHistorico(wb, XLSX) {
+    const { rows } = tabela(wb, XLSX);
+    const h = acharCabecalho(rows, { servico: /SERVI|REGRA|C[ÓO]D/, quantidade: /QUANT/, 'contrato?': /CONTRATO/, 'medicao?': /MEDI|PER[ÍI]ODO/ });
+    if (!h) throw new Error('Colunas esperadas: serviço (RL, TP, RP, COR, FSD, FSC ou MICRO), quantidade, contrato e medição.');
+    return rows.slice(h.linha + 1).filter(r => r[h.idx.servico]).map(r => ({ servico: norm(r[h.idx.servico]), quantidade: num(r[h.idx.quantidade]) || 0, contrato: h.idx.contrato != null ? r[h.idx.contrato] : '', medicao: h.idx.medicao != null ? r[h.idx.medicao] : '' }));
+  }
+
+  const api = { importarPATO, importarSNV, importarICPAvulso, importarPrecos, importarInventarioAvulso, importarCotacoes, importarHistorico, INV };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PatoImport = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const E = window.PatoEngine, IMP = window.PatoImport;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const brl = v => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const n2 = v => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const n3 = v => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+  const pct = v => (v == null || isNaN(v)) ? '—' : (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+  const sget = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const sset = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
+
+  const VIEWS = [
+    ['painel', 'Painel'], ['sep', 'Dados de entrada'], ['projeto', 'Projeto e SNV'], ['inventario', 'Inventário'], ['icp', 'ICP e histórico'],
+    ['transportes', 'Transportes e DMT'], ['precos', 'Preços e cotações'], ['sep', 'Resultado'], ['planilha', 'Planilha PATO'], ['validacoes', 'Validações'],
+    ['conferencia', 'Conferência'], ['saidas', 'Saídas e exportação'], ['sep', 'Referência'], ['biblioteca', 'Biblioteca técnica'], ['requisitos', 'Requisitos e modelo'],
+  ];
+  const PART_OF = { projeto: 'projeto', adm: 'projeto', parametros: 'projeto', justificativas: 'projeto', inventario: 'inventario', icp: 'icp', linhas: 'linhas', grupos: 'linhas', transportes: 'transportes', croqui: 'apoio', fit: 'apoio', desempenho: 'apoio', rocada: 'apoio', undia: 'apoio', binomio: 'apoio', cotacoes: 'apoio', precos: 'precos', snvRef: 'snv', gabarito: 'gabarito' };
+  const PARTS = { projeto: ['projeto', 'adm', 'parametros', 'justificativas'], inventario: ['inventario'], icp: ['icp'], linhas: ['linhas', 'grupos'], transportes: ['transportes'], apoio: ['croqui', 'fit', 'desempenho', 'rocada', 'undia', 'binomio', 'cotacoes'], snv: ['snvRef'], gabarito: ['gabarito'] };
+  const CHUNK = 1200;
+
+  let db = null, user = null, assets = null, downloads = null, canWrite = true;
+  let projetos = []; let PID = null; let S = null; let R = null; let VAL = []; let CMP = null;
+  const dirty = new Set(); let saving = false; let saveTimer = null; let saveMsg = '';
+  let biblioteca = []; let unsubBib = null;
+  const ui = { filtro: '', origem: '', soComProblema: false, derivados: true, sentido: 'todos', valStatus: 'todos', precoBusca: '', linhasDestaque: null, abc: 'sd' };
+
+  // ---------------- utilitários ----------------
+  function toast(msg, ms) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, ms || 3200); }
+  function setSave(msg) { saveMsg = msg; const el = $('#savestate'); if (el) el.textContent = msg; }
+  function view() { const h = (location.hash || '').slice(1); return VIEWS.some(v => v[0] === h) ? h : 'painel'; }
+  function recompute() {
+    if (!S) { R = null; VAL = []; CMP = null; return; }
+    try { R = E.compute(S); VAL = E.validar(S, R); CMP = S.gabarito && S.gabarito.linhas ? E.comparar(S, R, S.gabarito) : null; }
+    catch (e) { console.error(e); R = null; VAL = []; toast('Erro no cálculo: ' + e.message, 6000); }
+  }
+  function getPath(path) { const k = path.split('|'); let o = S; for (const p of k) { if (o == null) return undefined; o = o[p]; } return o; }
+  function setPath(path, val) { const k = path.split('|'); let o = S; for (let i = 0; i < k.length - 1; i++) { if (o[k[i]] == null) o[k[i]] = {}; o = o[k[i]]; } o[k[k.length - 1]] = val; markDirty(PART_OF[k[0]] || 'projeto'); }
+  function markDirty(part) { dirty.add(part); setSave('Alterações não salvas'); clearTimeout(saveTimer); saveTimer = setTimeout(salvar, 1500); }
+  const parseNum = v => { if (typeof v === 'number') return v; const s = String(v).trim().replace(/\s/g, ''); if (s === '') return null; const t = /,\d+$/.test(s) ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, ''); const x = Number(t); return isNaN(x) ? null : x; };
+
+  // ---------------- persistência ----------------
+  async function carregarLista() {
+    if (!db) return;
+    const snap = await db.collection('projetos').get();
+    projetos = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  }
+  async function abrirProjeto(pid) {
+    if (!db) return;
+    const meta = projetos.find(p => p.id === pid); if (!meta) return;
+    setSave('Abrindo projeto…');
+    const st = {};
+    const partes = meta.partes || Object.keys(PARTS);
+    for (const p of partes) {
+      if (p === 'precos') continue;
+      const d = await db.doc('projetos/' + pid + '/partes/' + p).get(); if (d.exists) Object.assign(st, d.data());
+    }
+    st.precos = {};
+    for (let i = 0; i < (meta.precosChunks || 1); i++) { const d = await db.doc('projetos/' + pid + '/partes/precos_' + i).get(); if (d.exists) Object.assign(st.precos, d.data().precos || {}); }
+    st.cotacoes = st.cotacoes || []; st.justificativas = st.justificativas || {}; st.parametros = st.parametros || {};
+    S = st; PID = pid; dirty.clear(); sset('pato.pid', pid); recompute(); setSave('Salvo');
+  }
+  async function salvar() {
+    if (!S || !dirty.size) return;
+    if (!db || !canWrite) { setSave(db ? 'Somente leitura: alterações ficam nesta tela' : 'Sem base conectada: alterações ficam nesta tela'); return; }
+    if (saving) { clearTimeout(saveTimer); saveTimer = setTimeout(salvar, 800); return; }
+    saving = true; setSave('Salvando…');
+    const pend = [...dirty]; dirty.clear();
+    try {
+      let meta = projetos.find(p => p.id === PID) || {};
+      for (const part of pend) {
+        if (part === 'precos') {
+          const codes = Object.keys(S.precos || {}); const n = Math.max(1, Math.ceil(codes.length / CHUNK));
+          for (let i = 0; i < n; i++) { const o = {}; codes.slice(i * CHUNK, (i + 1) * CHUNK).forEach(c => o[c] = S.precos[c]); await db.doc('projetos/' + PID + '/partes/precos_' + i).set({ precos: o }); }
+          for (let i = n; i < (meta.precosChunks || 0); i++) await db.doc('projetos/' + PID + '/partes/precos_' + i).delete();
+          meta.precosChunks = n;
+        } else {
+          const o = {}; PARTS[part].forEach(k => { if (S[k] !== undefined) o[k] = S[k]; });
+          await db.doc('projetos/' + PID + '/partes/' + part).set(JSON.parse(JSON.stringify(o)));
+        }
+      }
+      const partes = [...new Set([...(meta.partes || []), ...Object.keys(PARTS).filter(p => PARTS[p].some(k => S[k] !== undefined))])];
+      meta = { nome: S.projeto.nome || PID, rodovia: S.projeto.rodovia || '', segmento: S.projeto.segmento || '', partes, precosChunks: meta.precosChunks || 1, atualizadoEm: new Date().toISOString(), origem: meta.origem || '' };
+      await db.doc('projetos/' + PID).set(meta);
+      const i = projetos.findIndex(p => p.id === PID); if (i >= 0) projetos[i] = Object.assign({ id: PID }, meta); else projetos.push(Object.assign({ id: PID }, meta));
+      setSave('Salvo às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    } catch (e) {
+      pend.forEach(p => dirty.add(p));
+      if (e && e.code === 'invalid_argument') { canWrite = false; setSave('Sem permissão para salvar: alterações ficam nesta tela'); }
+      else if (e && e.code === 'quota_exceeded') setSave('Base cheia: apague projetos antigos para salvar');
+      else setSave('Não foi possível salvar agora. Nova tentativa em instantes.');
+      if (!e || !['invalid_argument', 'quota_exceeded'].includes(e.code)) { clearTimeout(saveTimer); saveTimer = setTimeout(salvar, 5000); }
+    } finally { saving = false; }
+  }
+  async function criarProjeto(estado, origem) {
+    const base = (estado.projeto.rodovia + '-km' + Math.round(estado.projeto.kmIni || 0) + '-' + Math.round(estado.projeto.kmFim || 0)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'projeto';
+    let pid = base, k = 2; while (projetos.some(p => p.id === pid)) pid = base + '-' + (k++);
+    S = estado; PID = pid; S.cotacoes = S.cotacoes || []; S.justificativas = S.justificativas || {};
+    projetos.push({ id: pid, nome: S.projeto.nome, rodovia: S.projeto.rodovia, segmento: S.projeto.segmento, partes: Object.keys(PARTS), precosChunks: 1, origem });
+    Object.keys(PARTS).forEach(p => dirty.add(p)); dirty.add('precos'); sset('pato.pid', pid);
+    recompute(); await salvar(); render();
+  }
+
+  // ---------------- importação de arquivos ----------------
+  function escolherArquivo(accept) {
+    return new Promise(res => { const f = $('#filepick'); f.value = ''; f.accept = accept || '.xlsx,.xlsm,.xls,.csv'; f.onchange = () => res(f.files[0] || null); f.click(); });
+  }
+  async function lerPlanilha(file) {
+    if (!window.XLSX) throw new Error('O leitor de planilhas não carregou. Recarregue a página.');
+    const buf = await file.arrayBuffer();
+    return XLSX.read(buf, { cellFormula: true, cellDates: true, type: 'array' });
+  }
+  const ACOES_IMPORT = {
+    async pato() {
+      const f = await escolherArquivo('.xlsx,.xlsm'); if (!f) return;
+      toast('Lendo ' + f.name + '. Planilhas grandes levam alguns segundos.', 8000);
+      await new Promise(r => setTimeout(r, 50));
+      const wb = await lerPlanilha(f);
+      const { estado, avisos } = IMP.importarPATO(wb, XLSX);
+      estado.projeto.arquivoOrigem = f.name;
+      await criarProjeto(estado, 'Importado de ' + f.name);
+      location.hash = 'conferencia';
+      toast('Projeto criado a partir de ' + f.name + (avisos.length ? '. ' + avisos.length + ' aviso(s) na importação.' : '.'), 6000);
+    },
+    async inventario() {
+      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+      const itens = IMP.importarInventarioAvulso(wb, XLSX); let n = 0;
+      Object.keys(itens).forEach(k => { if (!S.inventario[k]) S.inventario[k] = { rotulo: k, unidade: itens[k].unidade || '', grupo: 'Importado' }; S.inventario[k].valor = itens[k].valor; S.inventario[k].fonte = 'Importado de ' + f.name; n++; });
+      markDirty('inventario'); recompute(); render(); toast(n + ' itens do inventário atualizados a partir de ' + f.name + '.');
+    },
+    async icp() {
+      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+      const lev = IMP.importarICPAvulso(wb, XLSX); if (!lev.length) throw new Error('Nenhuma linha de levantamento encontrada.');
+      S.icp.levantamento = lev; markDirty('icp'); recompute(); render(); toast(lev.length + ' trechos de levantamento importados de ' + f.name + '.');
+    },
+    async historico() {
+      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+      const h = IMP.importarHistorico(wb, XLSX); const agg = {};
+      h.forEach(x => { const id = (S.icp.regras.find(r => r.id === x.servico || r.servico.toUpperCase() === x.servico) || {}).id; if (!id) return; const a = agg[id] || (agg[id] = { valor: 0, contrato: [], medicao: [] }); a.valor += x.quantidade; if (x.contrato) a.contrato.push(x.contrato); if (x.medicao) a.medicao.push(x.medicao); });
+      Object.keys(agg).forEach(id => { S.icp.historico[id] = { valor: Math.round(agg[id].valor * 1000) / 1000, contrato: [...new Set(agg[id].contrato)].join(', '), medicao: [...new Set(agg[id].medicao)].join(', '), memoria: 'Importado de ' + f.name, fonte: 'Importado' }; });
+      markDirty('icp'); recompute(); render(); toast('Histórico atualizado para ' + Object.keys(agg).length + ' serviço(s).');
+    },
+    async snv() {
+      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+      let ref = IMP.importarSNV(wb, XLSX);
+      const br = String(S.projeto.rodovia || '').match(/\d{3}/); if (br) { const f2 = ref.filter(r => String(r.codigo).startsWith(br[0])); if (f2.length) ref = f2; }
+      const uf = S.projeto.uf || 'MT'; const f3 = ref.filter(r => String(r.codigo).toUpperCase().includes('B' + uf)); if (f3.length) ref = f3;
+      S.snvRef = ref; markDirty('snv'); recompute(); render(); toast(ref.length + ' segmentos do SNV carregados para conferência.');
+    },
+    async precos() {
+      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+      const p = IMP.importarPrecos(wb, XLSX); const n = Object.keys(p).length; if (!n) throw new Error('Nenhum preço encontrado.');
+      Object.assign(S.precos, p); markDirty('precos'); recompute(); render(); toast(n + ' preços importados de ' + f.name + '.');
+    },
+    async cotacoes() {
+      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+      const c = IMP.importarCotacoes(wb, XLSX); S.cotacoes = (S.cotacoes || []).concat(c.map(x => Object.assign(x, { fonte: f.name })));
+      markDirty('apoio'); recompute(); render(); toast(c.length + ' cotações acrescentadas.');
+    },
+  };
+
+  // ---------------- exportação ----------------
+  async function exportarXLSX() {
+    if (!downloads) { toast('O download de arquivos não está disponível nesta visualização.'); return; }
+    const wb = XLSX.utils.book_new(); const P = S.projeto;
+    const cab = [['MINISTÉRIO DOS TRANSPORTES'], ['DEPARTAMENTO NACIONAL DE INFRAESTRUTURA DE TRANSPORTES'], ['SUPERINTENDÊNCIA REGIONAL NO ESTADO DE ' + (P.uf === 'MT' ? 'MATO GROSSO' : P.uf || '')], [],
+      ['RODOVIA:', P.rodovia], ['TRECHO:', P.trecho], ['SUBTRECHO:', P.subtrecho], ['SEGMENTO:', P.segmento], ['EXTENSÃO (km):', P.extensao], ['SNV:', P.snv + ' (versão ' + P.snvVersao + ')'], ['DATA-BASE:', P.dataBase], ['PRAZO (anos):', P.prazoAnos], []];
+    const pato = cab.concat([['ITEM', 'ORIGEM', 'CÓDIGO', 'DISCRIMINAÇÃO', 'INVENTÁRIO', 'UND', 'NÍVEL DE ESFORÇO', 'UND/UND', 'QUANT. DE TRABALHO', 'UND', 'PREÇO UNIT. SEM DESONERAÇÃO', 'PARCIAL SEM DESONERAÇÃO', 'PREÇO UNIT. COM DESONERAÇÃO', 'PARCIAL COM DESONERAÇÃO']]);
+    const grpTot = {}; R.resumo.forEach(g => grpTot[g.item] = g);
+    R.ordem.forEach(o => {
+      if (o.tipo === 'g') { const t = grpTot[o.item]; pato.push([o.item, '', '', o.titulo, '', '', '', '', '', '', '', t ? t.sd : '', '', t ? t.cd : '']); return; }
+      const L = S.linhas.find(x => x.id === o.id), r = R.linhas[o.id];
+      pato.push([L.item, L.origem, L.codigo, L.descricao || (S.precos[L.codigo] || {}).descricao, r.base, L.unidadeBase || '', r.fator, (L.unidade || '') + '/' + (L.unidadeBase || ''), r.qtd, L.unidade || '', r.puSD, r.sd, r.puCD, r.cd]);
+    });
+    pato.push([], ['', '', '', 'CONSERVAÇÃO RODOVIÁRIA', '', '', '', '', '', '', '', R.totais.conservaSD, '', R.totais.conservaCD], ['', '', '', 'DEMAIS SERVIÇOS DE MANUTENÇÃO (DSM)', '', '', '', '', '', '', '', R.totais.dsmSD, '', R.totais.dsmCD], ['', '', '', 'TOTAL GERAL DO ORÇAMENTO', '', '', '', '', '', '', '', R.totais.sd, '', R.totais.cd], ['', '', '', 'CONDIÇÃO MAIS VANTAJOSA', R.totais.condicao === 'sd' ? 'SEM DESONERAÇÃO' : 'COM DESONERAÇÃO']);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pato), 'PATO');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cab.concat([['ITEM', 'FAMÍLIA DE SERVIÇOS', 'SEM DESONERAÇÃO (R$)', '%', 'COM DESONERAÇÃO (R$)', '%']], R.resumo.map(g => [g.item, g.titulo, g.sd, g.pSD, g.cd, g.pCD]), [['', 'TOTAL', R.totais.sd, 1, R.totais.cd, 1]])), 'RESUMO');
+    const ab = R.contrato[ui.abc];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cab.concat([['CÓDIGO', 'DISCRIMINAÇÃO', 'QUANT. CONTRATUAL', 'UND', 'PREÇO UNIT.', 'PARCIAL', '%', '% ACUM.', 'FAIXA']], ab.itens.map(i => [i.codigo, i.descricao, i.qtd, i.unidade, i.pu, i.total, i.p, i.acum, i.faixa]), [['', 'TOTAL', '', '', '', ab.total]])), 'CURVA_ABC');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['ID', 'REFERÊNCIA', 'VERIFICAÇÃO', 'SITUAÇÃO', 'DETALHE']].concat(VAL.map(v => [v.id, v.art, v.titulo, v.status.toUpperCase(), v.detalhe]))), 'VALIDACOES');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['ITEM', 'CÓDIGO', 'ORIGEM', 'MODO', 'EXPRESSÃO DA BASE', 'EXPRESSÃO DO FATOR', 'JUSTIFICATIVA', 'FÓRMULA NA PLANILHA DE ORIGEM (F)', '(H)', '(J)']].concat(S.linhas.map(L => [L.item, L.codigo, L.origem, L.modo === 'icp' ? 'ICP: ' + L.icpRegra : L.modo, L.baseExpr, L.fatorExpr, L.justificativa || '', (L.memoriaPlanilha || {}).F, (L.memoriaPlanilha || {}).H, (L.memoriaPlanilha || {}).J]))), 'MEMORIA');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['SERVIÇO', 'KM DE FAIXA', 'NÍVEL DE ESFORÇO', 'MULTIPLICADOR', 'CÁLCULO', 'HISTÓRICO', 'ADOTADO', 'CRITÉRIO', 'UND']].concat(S.icp.regras.map(rg => { const x = R.icp.regras[rg.id]; return [x.servico, x.km, x.ne, x.mult, x.calc, x.historico, x.adotado, x.criterio, x.unidade]; }))), 'ICP');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['CHAVE', 'ELEMENTO', 'VALOR', 'UND', 'FONTE']].concat(Object.keys(S.inventario).map(k => [k, S.inventario[k].rotulo, S.inventario[k].valor, S.inventario[k].unidade, S.inventario[k].fonte]))), 'INVENTARIO');
+    const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    try { await downloads.save({ filename: 'PATO_' + (P.rodovia || '').replace(/\W+/g, '') + '_km' + P.kmIni + '_' + P.kmFim + '_gerado.xlsx', data: new Blob([out]) }); toast('Planilha enviada para download.'); }
+    catch (e) { toast(e && e.code === 'declined' ? 'Download cancelado.' : 'Não foi possível baixar: ' + (e && e.message || e)); }
+  }
+  async function exportarJSON() {
+    if (!downloads) { toast('O download de arquivos não está disponível nesta visualização.'); return; }
+    try { await downloads.save({ filename: 'projeto_' + PID + '.json', data: JSON.stringify(S, null, 1) }); } catch (e) { if (e && e.code !== 'declined') toast('Não foi possível baixar: ' + e.message); }
+  }
+
+  // ---------------- componentes ----------------
+  const pill = s => '<span class="pill ' + s + '">' + ({ ok: 'Atende', alerta: 'Atenção', erro: 'Não atende', info: 'Info' }[s] || s) + '</span>';
+  const contagem = () => { const c = { ok: 0, alerta: 0, erro: 0 }; VAL.forEach(v => c[v.status] = (c[v.status] || 0) + 1); return c; };
+  function navHTML() {
+    const c = contagem(); const cur = view();
+    let h = '', n = 0, sel = '';
+    VIEWS.forEach(([id, nome]) => {
+      if (id === 'sep') { h += '<div class="sep">' + esc(nome) + '</div>'; return; }
+      n++;
+      let dot = ''; if (id === 'validacoes' && S) dot = c.erro ? '<span class="dot bad">' + c.erro + '</span>' : c.alerta ? '<span class="dot warn">' + c.alerta + '</span>' : '';
+      h += '<a href="#' + id + '"' + (cur === id ? ' aria-current="page"' : '') + '><span class="n">' + String(n).padStart(2, '0') + '</span>' + esc(nome) + dot + '</a>';
+      sel += '<option value="' + id + '"' + (cur === id ? ' selected' : '') + '>' + esc(nome) + '</option>';
+    });
+    $('#nav').innerHTML = h; $('#mobnav').innerHTML = sel;
+  }
+  function topo(titulo, sub, acoes) {
+    const opts = projetos.map(p => '<option value="' + esc(p.id) + '"' + (p.id === PID ? ' selected' : '') + '>' + esc(p.nome || p.id) + '</option>').join('');
+    return '<div class="top"><div><div class="meta">' + (S ? esc(S.projeto.rodovia + ' · ' + S.projeto.segmento) : '') + '</div><h1>' + esc(titulo) + '</h1>' + (sub ? '<p class="muted">' + sub + '</p>' : '') + '</div><div class="row">' + (acoes || '') +
+      (projetos.length > 1 ? '<label class="f">Projeto<select data-act="trocar">' + opts + '</select></label>' : '') + '</div></div>';
+  }
+  function semProjeto() {
+    return topo('Nenhum projeto aberto') + '<div class="empty"><h2>Comece por uma planilha PATO</h2><p class="muted">Importe uma planilha no modelo da SR/MT (abas CAPA, PATO, BD, RESUMO_INVENT, ICP e CALCULO_ICP). O sistema lê inventário, ICP, transportes, preços e a própria planilha como gabarito de conferência.</p><button class="btn pri" data-imp="pato">Importar planilha PATO (.xlsx)</button>' +
+      (db ? '' : '<p class="note w">A base de projetos não está disponível nesta visualização. A importação funciona, mas os dados ficam só nesta tela.</p>') + '</div>';
+  }
+
+  // ---------------- telas ----------------
+  const T = {};
+  T.painel = () => {
+    const P = S.projeto, t = R.totais, c = contagem();
+    const prob = VAL.filter(v => v.status !== 'ok').sort((a, b) => (a.status === 'erro' ? 0 : 1) - (b.status === 'erro' ? 0 : 1));
+    const ctr = R.contrato[t.condicao];
+    const flow = [
+      ['1', 'Inventário', Object.keys(S.inventario).length + ' elementos', '#inventario'],
+      ['2', 'Quantificação', S.icp.levantamento.length + ' km levantados no ICP', '#icp'],
+      ['3', 'Preço', Object.keys(S.precos).length + ' preços · ' + S.transportes.length + ' transportes', '#precos'],
+      ['4', 'Planilha', S.linhas.length + ' linhas em ' + R.resumo.length + ' grupos', '#planilha'],
+      ['5', 'Saídas', 'Resumo, curva ABC e contrato', '#saidas'],
+    ];
+    return topo(P.nome, esc((P.trecho || '') + (P.subtrecho ? ' · ' + P.subtrecho : '')), '<button class="btn" data-imp="pato">Importar outra planilha</button>') +
+      '<div class="kpis">' +
+      '<div class="kpi"><span>Orçamento anual sem desoneração</span><b>' + brl(t.sd) + '</b></div>' +
+      '<div class="kpi"><span>Orçamento anual com desoneração</span><b>' + brl(t.cd) + '</b></div>' +
+      '<div class="kpi"><span>Condição mais vantajosa</span><b>' + (t.condicao === 'sd' ? 'Sem desoneração' : 'Com desoneração') + '</b></div>' +
+      '<div class="kpi"><span>Contrato · ' + P.prazoAnos + ' ano(s)</span><b>' + brl(ctr.total) + '</b></div>' +
+      '<div class="kpi"><span>DSM sobre o orçamento</span><b>' + pct(t.pDSM) + '</b></div></div>' +
+      '<div class="flow">' + flow.map(f => '<a class="st" href="' + f[3] + '" style="text-decoration:none;color:inherit"><span class="chip">Etapa ' + f[0] + '</span><b>' + f[1] + '</b><span>' + esc(f[2]) + '</span></a>').join('') + '</div>' +
+      '<div class="grid2"><div class="card"><div class="card-h"><h2>Pendências da Res. 8/2023</h2><span class="row">' + pill('erro') + ' ' + c.erro + ' ' + pill('alerta') + ' ' + c.alerta + ' ' + pill('ok') + ' ' + c.ok + '</span></div>' +
+      (prob.length ? prob.slice(0, 8).map(v => '<div class="row" style="align-items:flex-start;flex-wrap:nowrap">' + pill(v.status) + '<div><b>' + esc(v.titulo) + '</b><div class="muted" style="font-size:.84rem">' + esc(v.detalhe) + '</div></div></div>').join('') : '<p class="muted">Nenhuma pendência.</p>') +
+      '<a class="btn sm" href="#validacoes">Ver todas as ' + VAL.length + ' verificações</a></div>' +
+      '<div class="card"><h2>Conferência com a planilha de origem</h2>' + (CMP ? '<div class="kpis"><div class="kpi"><span>Linhas iguais</span><b>' + CMP.linhasOk + ' de ' + CMP.linhasTotal + '</b></div><div class="kpi"><span>Total sem desoneração</span><b>' + (CMP.totais[0].ok ? 'Igual' : 'Diferente') + '</b></div></div>' +
+        '<div class="bar"><i style="width:' + (CMP.linhasTotal ? 100 * CMP.linhasOk / CMP.linhasTotal : 0) + '%"></i></div>' +
+        (CMP.subtotais.length ? '<p class="note w">A planilha de origem tem ' + CMP.subtotais.length + ' subtotal(is) que não fecha(m) com as próprias linhas. Diferença no item ' + esc(CMP.subtotais.map(s => s.item + ' (' + (s.condicao === 'sd' ? 'sem' : 'com') + ' desoneração): ' + brl(s.diferenca)).join('; ')) + '.</p>' : '') +
+        '<a class="btn sm" href="#conferencia">Abrir a conferência</a>' : '<p class="muted">Este projeto não tem planilha de origem para comparar.</p>') +
+      '<dl class="kv"><dt>SNV</dt><dd>' + esc(P.snv) + ' · versão ' + esc(P.snvVersao) + '</dd><dt>Data-base</dt><dd>' + esc(P.dataBase) + '</dd><dt>Unidade local</dt><dd>' + esc(P.unidadeLocal || '—') + '</dd><dt>Arquivo de origem</dt><dd>' + esc(P.arquivoOrigem || '—') + '</dd></dl></div></div>';
+  };
+
+  T.projeto = () => {
+    const P = S.projeto; const f = (lab, path, type, extra) => '<label class="f">' + lab + '<input ' + (type === 'num' ? 'class="n" inputmode="decimal" style="width:100%;text-align:left"' : '') + ' type="' + (type === 'num' ? 'text' : type || 'text') + '" data-edit="' + path + '" data-type="' + (type || 'text') + '" value="' + esc(type === 'num' ? n3(getPath(path)) : getPath(path) || '') + '"' + (extra || '') + '></label>';
+    const segs = (P.segmentos || []);
+    const ref = S.snvRef || [];
+    const conf = ref.length ? segs.map(s => { const o = ref.find(x => String(x.codigo).toUpperCase() === String(s.snv).toUpperCase()); const ok = o && Math.abs(o.kmIni - s.kmIni) < 0.05 && Math.abs(o.kmFim - s.kmFim) < 0.05; return '<tr><td class="mono">' + esc(s.snv) + '</td><td class="r num">' + n3(s.kmIni) + ' – ' + n3(s.kmFim) + '</td><td class="r num">' + (o ? n3(o.kmIni) + ' – ' + n3(o.kmFim) : '—') + '</td><td>' + esc(o ? o.superficie || '' : '') + '</td><td>' + pill(ok ? 'ok' : 'erro') + '</td></tr>'; }).join('') : '';
+    const vizinhos = ref.length ? ref.filter(x => x.kmFim > P.kmIni && x.kmIni < P.kmFim && !segs.some(s => String(s.snv).toUpperCase() === String(x.codigo).toUpperCase())) : [];
+    return topo('Projeto e SNV', 'Cabeçalho do plano de trabalho, segmentos do SNV e conferência com a versão vigente (art. 20 e art. 33, I, a).') +
+      '<div class="card"><h2>Cabeçalho</h2><div class="form">' + f('Nome do projeto', 'projeto|nome') + f('Rodovia', 'projeto|rodovia') + f('Trecho', 'projeto|trecho') + f('Subtrecho', 'projeto|subtrecho') + f('Segmento', 'projeto|segmento') +
+      f('km inicial', 'projeto|kmIni', 'num') + f('km final', 'projeto|kmFim', 'num') + f('Extensão (km)', 'projeto|extensao', 'num') + f('SNV', 'projeto|snv') + f('Versão do SNV', 'projeto|snvVersao') + f('Unidade local', 'projeto|unidadeLocal') +
+      '<label class="f">Tipo de rodovia<select data-edit="projeto|tipo" data-type="text"><option value="pavimentada"' + (P.tipo === 'pavimentada' ? ' selected' : '') + '>Pavimentada</option><option value="nao-pavimentada"' + (P.tipo !== 'pavimentada' ? ' selected' : '') + '>Não pavimentada</option></select></label>' +
+      f('Data-base (mês)', 'projeto|dataBase', 'month') + f('Início da licitação', 'projeto|aberturaLicitacao', 'date') + f('Prazo do contrato (anos)', 'projeto|prazoAnos', 'num') + f('Data do inventário', 'projeto|dataInventario', 'date') +
+      f('Engenheiro supervisor (coef.)', 'adm|engenheiroCoef', 'num') + '</div><p class="note">O início da licitação decide a verificação do art. 22: a data-base pode ter no máximo 1 ano até essa data.</p></div>' +
+      '<div class="card flat"><div class="card-h" style="padding:14px 16px 0"><h2>Segmentos do SNV</h2><div class="row"><button class="btn sm" data-act="addSeg">Acrescentar segmento</button><button class="btn sm" data-imp="snv">Importar planilha do SNV para conferir</button></div></div><div class="tbl short"><table><thead><tr><th>Código SNV</th><th>Tipo de pista</th><th class="r">km inicial</th><th class="r">km final</th><th>Revestimento</th><th class="r">Faixas</th><th class="r">Largura (m)</th><th></th></tr></thead><tbody>' +
+      segs.map((s, i) => '<tr><td><input class="cell mono" data-edit="projeto|segmentos|' + i + '|snv" value="' + esc(s.snv) + '"></td><td><input class="cell" data-edit="projeto|segmentos|' + i + '|tipoPista" value="' + esc(s.tipoPista || '') + '"></td><td class="r"><input class="cell n" data-type="num" data-edit="projeto|segmentos|' + i + '|kmIni" value="' + n3(s.kmIni) + '"></td><td class="r"><input class="cell n" data-type="num" data-edit="projeto|segmentos|' + i + '|kmFim" value="' + n3(s.kmFim) + '"></td><td><input class="cell" data-edit="projeto|segmentos|' + i + '|revestimento" value="' + esc(s.revestimento || '') + '"></td><td class="r num">' + esc(s.faixas || '') + '</td><td class="r num">' + n2(s.largura) + '</td><td><button class="btn sm" data-act="delSeg" data-i="' + i + '">Remover</button></td></tr>').join('') +
+      '</tbody></table></div></div>' +
+      (ref.length ? '<div class="card flat"><div style="padding:14px 16px 0"><h2>Conferência com o SNV importado</h2><p class="muted">' + ref.length + ' segmentos carregados.</p></div><div class="tbl short"><table><thead><tr><th>Segmento</th><th class="r">km no projeto</th><th class="r">km no SNV</th><th>Superfície</th><th>Situação</th></tr></thead><tbody>' + conf + '</tbody></table></div>' +
+        (vizinhos.length ? '<p class="note w" style="margin:12px 16px">Segmentos do SNV dentro do trecho que não estão no projeto: ' + esc(vizinhos.map(v => v.codigo + ' (km ' + v.kmIni + '–' + v.kmFim + ')').join('; ')) + '.</p>' : '') + '</div>'
+        : '<p class="note">Para conferir códigos e quilometragem, baixe a planilha do SNV vigente na página <a href="https://www.gov.br/dnit/pt-br/assuntos/atlas-e-mapas/pnv-e-snv" target="_blank" rel="noopener">PNV e SNV</a> do DNIT e importe aqui.</p>');
+  };
+
+  T.inventario = () => {
+    const inv = S.inventario; const usos = {};
+    S.linhas.forEach(L => (String(L.baseExpr) + ' ' + String(L.fatorExpr)).replace(/inv\("([^"]+)"\)/g, (m, k) => { (usos[k] = usos[k] || []).push(L.item); }));
+    (S.desempenho ? S.desempenho.linhas : []).forEach(l => String(l.qtdTotalExpr || '').replace(/inv\("([^"]+)"\)/g, (m, k) => { (usos[k] = usos[k] || []).push('GD'); }));
+    const grupos = {}; Object.keys(inv).forEach(k => (grupos[inv[k].grupo || 'Outros'] = grupos[inv[k].grupo || 'Outros'] || []).push(k));
+    return topo('Inventário', 'Elementos geradores de conservação (Anexos II e III). Os valores alimentam diretamente as quantidades da planilha e do grupo de desempenho.', '<button class="btn" data-imp="inventario">Importar inventário</button>') +
+      '<p class="note">Aceita a aba RESUMO_INVENT (ou "RESUMO DO INVENTÁRIO") do modelo da SR/MT, ou uma tabela com as colunas chave, valor e unidade.</p>' +
+      Object.keys(grupos).map(g => '<div class="card flat"><div style="padding:14px 16px 0"><h2>' + esc(g) + '</h2></div><div class="tbl short"><table><thead><tr><th>Elemento</th><th>Chave</th><th class="r">Valor</th><th>Und</th><th>Usado em</th><th>Fonte</th></tr></thead><tbody>' +
+        grupos[g].map(k => '<tr><td>' + esc(inv[k].rotulo) + '</td><td class="mono">' + esc(k) + '</td><td class="r"><input class="cell n" data-type="num" data-edit="inventario|' + esc(k) + '|valor" value="' + n3(inv[k].valor) + '"></td><td>' + esc(inv[k].unidade) + '</td><td>' + (usos[k] ? usos[k].slice(0, 6).map(i => '<span class="chip">' + esc(i) + '</span>').join(' ') + (usos[k].length > 6 ? ' +' + (usos[k].length - 6) : '') : '<span class="muted">—</span>') + '</td><td class="muted" style="font-size:.78rem">' + esc(inv[k].fonte || '') + '</td></tr>').join('') + '</tbody></table></div></div>').join('');
+  };
+
+  T.icp = () => {
+    const P = S.icp.parametros; const rg = R.icp.regras;
+    const lev = R.icp.levantamento.filter(r => ui.sentido === 'todos' || r.sentido === ui.sentido);
+    const resumo = {}; R.icp.levantamento.forEach(r => { const k = r.sentido; resumo[k] = resumo[k] || { BOM: 0, REGULAR: 0, RUIM: 0, 'PÉSSIMO': 0, km: 0 }; resumo[k][r.condicao] += r.ext; resumo[k].km += r.ext; });
+    const intervs = [...new Set(S.icp.levantamento.flatMap(r => [r.intervPrim, r.intervSec]).filter(Boolean))];
+    const sel = (i, campo, v) => '<select data-edit="icp|levantamento|' + i + '|' + campo + '"><option value=""></option>' + intervs.map(x => '<option' + (x === v ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select>';
+    return topo('ICP e histórico', 'Quantidades de reparo, tapa-buraco, remendo, fresagem e microrrevestimento a partir do levantamento do pavimento (art. 19 e Anexo XXVII).', '<button class="btn" data-imp="icp">Importar levantamento</button><button class="btn" data-imp="historico">Importar histórico</button>') +
+      '<p class="note">O ICM-Web é um sistema interno do DNIT e não pode ser consultado a partir desta página. Exporte o levantamento em planilha (colunas km inicial, km final, sentido, panela, remendo, trinca e intervenções) e importe aqui.</p>' +
+      '<div class="card"><h2>Parâmetros</h2><div class="form"><label class="f">Método de soma das faixas<select data-edit="icp|parametros|metodo"><option value="planilha"' + (P.metodo === 'planilha' ? ' selected' : '') + '>Faixa crescente × multiplicador (como na planilha original)</option><option value="faixas"' + (P.metodo === 'faixas' ? ' selected' : '') + '>Soma das duas faixas levantadas</option></select></label>' +
+      '<label class="f">Largura da faixa (m)<input class="n" style="width:100%;text-align:left" data-type="num" data-edit="icp|parametros|larguraFaixa" value="' + n3(P.larguraFaixa) + '"></label><label class="f">Multiplicador do método da planilha<input class="n" style="width:100%;text-align:left" data-type="num" data-edit="icp|parametros|fatorFaixas" value="' + n3(P.fatorFaixas) + '"></label></div></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Regras de quantificação</h2><p class="muted">Quantidade adotada = maior valor entre o cálculo pelo ICP e o histórico executado.</p></div><div class="tbl short"><table><thead><tr><th>Serviço</th><th class="r">km de faixa</th><th class="r">Nível de esforço</th><th>Critério do NE</th><th class="r">Mult.</th><th class="r">Cálculo ICP</th><th class="r">Histórico</th><th>Contrato / medição do histórico</th><th class="r">Adotado</th><th>Origem</th></tr></thead><tbody>' +
+      S.icp.regras.map(r => { const x = rg[r.id]; const h = S.icp.historico[r.id] || {}; return '<tr><td><b>' + esc(r.servico) + '</b></td><td class="r num">' + n3(x.km) + '</td><td class="r num">' + n3(x.ne) + ' ' + esc(r.unidade) + '/kmf</td><td class="muted" style="font-size:.8rem">' + esc(r.neFonte) + '</td><td class="r num">' + n3(x.mult) + '</td><td class="r num">' + n3(x.calc) + '</td><td class="r"><input class="cell n" data-type="num" data-edit="icp|historico|' + r.id + '|valor" value="' + n3(h.valor) + '"></td><td><input class="cell" placeholder="contrato" data-edit="icp|historico|' + r.id + '|contrato" value="' + esc(h.contrato || '') + '"><input class="cell" placeholder="medição/período" data-edit="icp|historico|' + r.id + '|medicao" value="' + esc(h.medicao || '') + '">' + (h.memoria && !h.contrato ? '<div class="mono muted" style="font-size:.7rem">' + esc(h.memoria) + '</div>' : '') + '</td><td class="r num"><b>' + n3(x.adotado) + '</b> ' + esc(r.unidade) + '</td><td><span class="chip">' + x.criterio + '</span></td></tr>'; }).join('') + '</tbody></table></div></div>' +
+      '<div class="card flat"><div class="card-h" style="padding:14px 16px 0"><h2>Levantamento por km</h2><div class="tabs">' + [['todos', 'Todas'], ['C', 'Crescente'], ['D', 'Decrescente']].map(([k, l]) => '<button data-act="sentido" data-v="' + k + '" aria-pressed="' + (ui.sentido === k) + '">' + l + '</button>').join('') + '</div></div>' +
+      '<div style="padding:0 16px" class="row">' + Object.keys(resumo).map(k => '<span class="muted">' + (k === 'C' ? 'Crescente' : 'Decrescente') + ': ' + n3(resumo[k].km) + ' km · bom ' + n3(resumo[k].BOM) + ' · regular ' + n3(resumo[k].REGULAR) + ' · ruim ' + n3(resumo[k].RUIM) + ' · péssimo ' + n3(resumo[k]['PÉSSIMO']) + '</span>').join('') + '</div>' +
+      '<div class="tbl"><table><thead><tr><th>Sentido</th><th class="r">km</th><th>Panela</th><th>Remendo</th><th>Trinca</th><th class="r">ICP</th><th>Condição</th><th>Intervenção primária</th><th>Intervenção secundária</th></tr></thead><tbody>' +
+      lev.map(r => { const i = S.icp.levantamento.findIndex(x => x.kmIni === r.kmIni && x.kmFim === r.kmFim && x.sentido === r.sentido); return '<tr><td>' + (r.sentido === 'C' ? 'Cresc.' : 'Decr.') + '</td><td class="r num">' + n3(r.kmIni) + ' – ' + n3(r.kmFim) + '</td><td>' + r.panela + '</td><td>' + r.remendo + '</td><td>' + r.trinca + '</td><td class="r num">' + n3(r.icp) + '</td><td>' + r.condicao + '</td><td>' + sel(i, 'intervPrim', r.intervPrim) + '</td><td>' + sel(i, 'intervSec', r.intervSec) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  };
+
+  function linhaFlags() { const f = {}; VAL.forEach(v => { if (v.status !== 'ok') (v.ref || []).forEach(id => (f[id] = f[id] || []).push(v.id)); }); return f; }
+  T.planilha = () => {
+    const flags = linhaFlags(); const q = ui.filtro.trim().toUpperCase();
+    const origens = [...new Set(S.linhas.map(L => L.origem).filter(Boolean))].sort();
+    const grpTot = {}; R.resumo.forEach(g => grpTot[g.item] = g);
+    let body = '';
+    R.ordem.forEach(o => {
+      if (o.tipo === 'g') {
+        if (q || ui.origem || ui.soComProblema) return;
+        const t = grpTot[o.item];
+        body += '<tr class="' + (o.nivel === 1 ? 'g1' : 'g') + '"><td>' + esc(o.item) + '</td><td colspan="9">' + esc(o.titulo) + '</td><td class="r num">' + (t ? n2(t.sd) : '') + '</td><td></td><td class="r num">' + (t ? n2(t.cd) : '') + '</td></tr>';
+        return;
+      }
+      const L = S.linhas.find(x => x.id === o.id), r = R.linhas[o.id];
+      const depth = L.item.split('.').length;
+      if (!ui.derivados && depth > 3 && !q) return;
+      if (q && !(L.item + ' ' + L.codigo + ' ' + (L.descricao || '')).toUpperCase().includes(q)) return;
+      if (ui.origem && L.origem !== ui.origem) return;
+      if (ui.soComProblema && !flags[L.id] && !r.erro && !r.semPreco) return;
+      if (ui.linhasDestaque && !ui.linhasDestaque.includes(L.id)) return;
+      body += '<tr class="clk ' + (depth > 3 ? (depth > 4 ? 'sub2' : 'sub') : '') + (flags[L.id] || r.erro ? ' hl' : '') + '" data-act="linha" data-id="' + L.id + '"><td class="mono">' + esc(L.item) + '</td><td><span class="chip">' + esc(L.origem || '—') + '</span></td><td class="mono">' + esc(L.codigo) + '</td><td class="desc">' + esc(L.descricao || (S.precos[L.codigo] || {}).descricao || '') + (flags[L.id] ? ' <span class="pill alerta">' + flags[L.id].join(' ') + '</span>' : '') + (r.erro ? ' <span class="pill erro">erro</span>' : '') + '</td>' +
+        '<td class="r num">' + n3(r.base) + '</td><td>' + esc(L.unidadeBase || '') + '</td><td class="r num">' + n3(r.fator) + '</td><td class="r num"><b>' + n3(r.qtd) + '</b></td><td>' + esc(L.unidade || '') + '</td><td class="r num">' + n2(r.puSD) + '</td><td class="r num">' + n2(r.sd) + '</td><td class="r num">' + n2(r.puCD) + '</td><td class="r num">' + n2(r.cd) + '</td></tr>';
+    });
+    const t = R.totais;
+    return topo('Planilha PATO', 'Quantidades de 12 meses com preços sem e com desoneração (art. 33, j, r e s; art. 41). Clique numa linha para ver a memória de cálculo e editar.') +
+      (ui.linhasDestaque ? '<p class="note w">Mostrando só as linhas apontadas pela verificação. <button class="btn sm" data-act="limparDestaque">Mostrar todas</button></p>' : '') +
+      '<div class="row"><input type="search" placeholder="Buscar item, código ou serviço" data-ui="filtro" value="' + esc(ui.filtro) + '" style="min-width:240px"><select data-ui="origem"><option value="">Todas as origens</option>' + origens.map(o => '<option' + (ui.origem === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>' +
+      '<label class="row"><input type="checkbox" data-ui="derivados"' + (ui.derivados ? ' checked' : '') + '> Insumos derivados</label><label class="row"><input type="checkbox" data-ui="soComProblema"' + (ui.soComProblema ? ' checked' : '') + '> Só linhas com apontamento</label></div>' +
+      '<div class="card flat"><div class="tbl"><table><thead><tr><th>Item</th><th>Origem</th><th>Código</th><th>Discriminação</th><th class="r">Inventário</th><th>Und</th><th class="r">Nível de esforço</th><th class="r">Quantidade</th><th>Und</th><th class="r">PU sem deson.</th><th class="r">Parcial sem deson.</th><th class="r">PU com deson.</th><th class="r">Parcial com deson.</th></tr></thead><tbody>' + body + '</tbody></table></div></div>' +
+      '<div class="kpis"><div class="kpi"><span>Conservação rodoviária</span><b>' + brl(t.conservaSD) + '</b><span>' + brl(t.conservaCD) + ' com desoneração</span></div><div class="kpi"><span>DSM</span><b>' + brl(t.dsmSD) + '</b><span>' + brl(t.dsmCD) + ' com desoneração</span></div><div class="kpi"><span>Total geral</span><b>' + brl(t.sd) + '</b><span>' + brl(t.cd) + ' com desoneração</span></div></div>';
+  };
+
+  function abrirLinha(id) {
+    const L = S.linhas.find(x => x.id === id), r = R.linhas[id]; const g = CMP && S.gabarito.linhas[id];
+    const p = S.precos[L.codigo] || {};
+    const vs = VAL.filter(v => (v.ref || []).includes(id) && v.status !== 'ok');
+    $('#drawer').innerHTML = '<div class="overlay" data-act="fechar"><div class="drawer" role="dialog" aria-label="Linha ' + esc(L.item) + '" data-stop="1">' +
+      '<div class="card-h"><div><span class="chip">' + esc(L.item) + '</span> <span class="chip">' + esc(L.codigo) + '</span><h2 style="margin-top:6px">' + esc(L.descricao || p.descricao || '') + '</h2></div><button class="btn sm" data-act="fechar">Fechar</button></div>' +
+      vs.map(v => '<p class="note w"><b>' + esc(v.id + ' · ' + v.titulo) + '</b><br>' + esc(v.detalhe) + '</p>').join('') +
+      '<dl class="kv"><dt>Base</dt><dd class="num">' + n3(r.base) + ' ' + esc(L.unidadeBase || '') + '</dd><dt>Fator</dt><dd class="num">' + n3(r.fator) + '</dd><dt>Quantidade</dt><dd class="num"><b>' + n3(r.qtd) + ' ' + esc(L.unidade || '') + '</b> (' + (L.modo === 'icp' ? 'regra do ICP ' + esc(L.icpRegra) : (L.modo === 'round' ? 'arredondada' : 'truncada') + ' em ' + (L.casas == null ? 3 : L.casas) + ' casas') + ')</dd>' +
+      '<dt>Preço sem desoneração</dt><dd class="num">' + n2(r.puSD) + ' → ' + brl(r.sd) + '</dd><dt>Preço com desoneração</dt><dd class="num">' + n2(r.puCD) + ' → ' + brl(r.cd) + '</dd><dt>Fonte do preço</dt><dd>' + esc(p.fonte || (L.codigo === 'GD' ? 'Grupo de desempenho (calculado)' : '—')) + '</dd>' +
+      (g ? '<dt>Planilha de origem</dt><dd class="num">' + n3(g.qtd) + ' · ' + brl(g.sd) + ' · ' + brl(g.cd) + '</dd>' : '') + '</dl>' +
+      '<div class="card"><h3>Memória de cálculo</h3>' +
+      '<label class="f">Origem da quantidade<input data-l="origem" value="' + esc(L.origem || '') + '" list="origens"></label><datalist id="origens">' + ['INVENTÁRIO', 'ICP', 'HISTÓRICO', 'SICRO', 'PROD SICRO', 'RESOLUÇÃO', 'NOTA TÉCNICA', 'ESTIMATIVA', 'MANUAL', 'SMT', 'PRAZO PATO'].map(o => '<option value="' + o + '">').join('') + '</datalist>' +
+      '<label class="f">Expressão da base<textarea rows="2" data-l="baseExpr">' + esc(L.baseExpr) + '</textarea></label>' +
+      (L.modo === 'icp' ? '<p class="note">A quantidade vem da regra ' + esc(L.icpRegra) + ' na tela ICP e histórico. O fator mostrado é a quantidade dividida pela base.</p>' : '<label class="f">Expressão do fator (nível de esforço ou taxa)<textarea rows="2" data-l="fatorExpr">' + esc(L.fatorExpr) + '</textarea></label>') +
+      '<label class="f">Justificativa técnica (art. 18 e art. 24)<textarea rows="3" data-l="justificativa" style="font-family:var(--f-body)">' + esc(L.justificativa || '') + '</textarea></label>' +
+      '<div class="row"><button class="btn pri" data-act="salvarLinha" data-id="' + id + '">Aplicar</button><span class="muted" id="lerr"></span></div>' +
+      '<details><summary>Como escrever as expressões</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:.84rem;display:grid;gap:2px"><li><span class="mono">inv("pista_CA")</span> valor do inventário</li><li><span class="mono">qtd("L21")</span>, <span class="mono">base("L21")</span>, <span class="mono">fator("L21")</span> outra linha</li><li><span class="mono">icp("RP")</span> quantidade adotada pelo ICP; <span class="mono">icpKm("RP")</span> km de faixa</li><li><span class="mono">transp("…")</span> momento de transporte; <span class="mono">undia("CONSERVA",codigo)</span> sinalização de obras</li><li>Variáveis: <span class="mono">ext</span>, <span class="mono">prazo</span>, <span class="mono">PI</span>, <span class="mono">neRocada</span>; operadores + − × ÷ ^ e parênteses</li></ul></details>' +
+      (L.memoriaPlanilha ? '<details><summary>Fórmulas na planilha de origem</summary><dl class="kv mono" style="font-size:.76rem;margin-top:6px"><dt>F</dt><dd>' + esc(L.memoriaPlanilha.F) + '</dd><dt>H</dt><dd>' + esc(L.memoriaPlanilha.H) + '</dd><dt>J</dt><dd>' + esc(L.memoriaPlanilha.J) + '</dd></dl></details>' : '') + '</div></div></div>';
+  }
+
+  T.transportes = () => {
+    const fit = Object.values(R.fit);
+    const blocos = Object.values(R.transportes);
+    const croq = Object.keys(S.croqui);
+    return topo('Transportes e DMT', 'Croqui de ocorrências (Anexo IX), fator de interferência de tráfego (Anexo VI) e momentos de transporte (Anexo VIII).') +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Croqui de ocorrências e DMT</h2><p class="muted">LN leito natural · RP revestimento primário · P pavimentada (total) · Pu trecho urbano. A parcela rural é P − Pu.</p></div><div class="tbl"><table><thead><tr><th>Material</th><th>Origem</th><th>Destino</th><th class="r">LN</th><th class="r">RP</th><th class="r">P</th><th class="r">Pu</th></tr></thead><tbody>' +
+      croq.map(k => { const c = S.croqui[k]; const inp = col => '<td class="r"><input class="cell n" data-type="num" data-edit="croqui|' + esc(k) + '|' + col + '" value="' + n3(c[col]) + '"></td>'; return '<tr><td>' + esc(c.material) + '</td><td>' + esc(c.origem) + '</td><td>' + esc(c.destino) + '</td>' + inp('LN') + inp('RP') + inp('P') + inp('Pu') + '</tr>'; }).join('') + '</tbody></table></div></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Fator de interferência de tráfego</h2><p class="muted">FIT = 1 + (A1 + A2) ÷ (DMTp × 60), com A1 = 70 + 0,0035 × VMDf e A2 = 60 × DMTu.</p></div><div class="tbl short"><table><thead><tr><th>Frente</th><th>Código</th><th>Insumo e percurso</th><th class="r">VMDf</th><th class="r">DMTp</th><th class="r">DMTu</th><th class="r">A1</th><th class="r">A2</th><th class="r">FIT</th></tr></thead><tbody>' +
+      S.fit.map((f, i) => { const x = R.fit[f.frente + '|' + String(f.chave).trim().toUpperCase()] || {}; return '<tr><td>' + esc(f.frente) + '</td><td class="mono">' + esc(f.codigo) + '</td><td>' + esc(f.chave) + '</td><td class="r"><input class="cell n" data-type="num" data-edit="fit|' + i + '|vmdf" value="' + n3(f.vmdf) + '"></td><td class="r num">' + n3(x.dmtp) + '</td><td class="r num">' + n3(x.dmtu) + '</td><td class="r num">' + n3(x.a1) + '</td><td class="r num">' + n3(x.a2) + '</td><td class="r num"><b>' + (x.fit ? x.fit.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) : '—') + '</b></td></tr>'; }).join('') + '</tbody></table></div></div>' +
+      blocos.map(b => '<details class="card"><summary>' + esc(b.frente) + ' · ' + esc(b.codigo) + ' · ' + esc(b.descricao || '') + ' — <span class="num">' + n3(b.total) + ' tkm</span></summary><div class="tbl short" style="margin-top:8px"><table><thead><tr><th>Serviço</th><th>Material</th><th>Percurso</th><th class="r">Quantidade</th><th class="r">Consumo (t/und)</th><th class="r">DMT</th><th class="r">FIT</th><th class="r">Momento (tkm)</th></tr></thead><tbody>' +
+        b.linhas.map(l => '<tr' + (l.semCroqui ? ' class="hl"' : '') + '><td class="mono">' + esc(l.servico) + '</td><td>' + esc(l.material) + '</td><td>' + esc(l.origem + ' → ' + l.destino) + '</td><td class="r num">' + n3(l.qtd) + '</td><td class="r num">' + l.consumo.toLocaleString('pt-BR', { maximumFractionDigits: 5 }) + '</td><td class="r num">' + n3(l.dmt) + '</td><td class="r num">' + l.fit.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + '</td><td class="r num">' + n3(l.momento) + '</td></tr>').join('') + '</tbody></table></div></details>').join('');
+  };
+
+  T.precos = () => {
+    const usados = new Set(S.linhas.map(L => L.codigo)); const q = ui.precoBusca.trim().toUpperCase();
+    const cod = Object.keys(S.precos).filter(c => !q || (c + ' ' + (S.precos[c].descricao || '')).toUpperCase().includes(q)).sort((a, b) => (usados.has(b) - usados.has(a)) || a.localeCompare(b));
+    return topo('Preços e cotações', 'Banco de preços (SICRO), binômio de materiais betuminosos (art. 46) e cotações de pétreos e areia (art. 45).', '<button class="btn" data-imp="precos">Importar preços</button><button class="btn" data-imp="cotacoes">Importar cotações</button>') +
+      '<p class="note">Os preços aceitam a aba BD do modelo ou uma tabela com código, descrição, unidade, preço sem desoneração e com desoneração (por exemplo, o relatório sintético do SICRO para MT).</p>' +
+      '<div class="card flat"><div class="card-h" style="padding:14px 16px 0"><h2>Banco de preços</h2><input type="search" data-ui="precoBusca" placeholder="Buscar código ou descrição" value="' + esc(ui.precoBusca) + '"></div><div class="tbl"><table><thead><tr><th>Código</th><th>Descrição</th><th>Und</th><th class="r">Sem desoneração</th><th class="r">Com desoneração</th><th>Fonte</th><th>Uso</th></tr></thead><tbody>' +
+      cod.slice(0, 400).map(c => { const p = S.precos[c]; return '<tr><td class="mono">' + esc(c) + '</td><td>' + esc(p.descricao) + '</td><td>' + esc(p.unidade) + '</td><td class="r"><input class="cell n" data-type="num" data-edit="precos|' + esc(c) + '|sd" value="' + n2(p.sd) + '"></td><td class="r"><input class="cell n" data-type="num" data-edit="precos|' + esc(c) + '|cd" value="' + n2(p.cd) + '"></td><td class="muted" style="font-size:.78rem">' + esc(p.fonte) + '</td><td>' + (usados.has(c) ? '<span class="chip">na planilha</span>' : '') + '</td></tr>'; }).join('') +
+      (cod.length > 400 ? '<tr><td colspan="7" class="muted">Mostrando 400 de ' + cod.length + '. Use a busca.</td></tr>' : '') + '</tbody></table></div></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Binômio de materiais betuminosos</h2><p class="muted">Portaria DNIT nº 1.977/2017: o orçamento adota a origem de menor custo total (aquisição + transporte, com BDI).</p></div><div class="tbl short"><table><thead><tr><th>Material</th><th>Origem</th><th>Local</th><th class="r">Aquisição (R$/t)</th><th class="r">Transporte (R$/t)</th><th class="r">Total (R$/t)</th><th></th></tr></thead><tbody>' +
+      S.binomio.map(b => { const tot = o => (o.aquisicao || 0) + (o.transporte || 0); const min = Math.min(...b.origens.map(tot)); return b.origens.map((o, i) => '<tr><td>' + (i === 0 ? '<b>' + esc(b.material) + '</b>' : '') + '</td><td class="mono">' + esc(o.origem) + '</td><td>' + esc(o.local + '/' + o.uf) + '</td><td class="r num">' + n2(o.aquisicao) + '</td><td class="r num">' + n2(o.transporte) + '</td><td class="r num">' + n2(tot(o)) + '</td><td>' + (tot(o) === min ? '<span class="pill ok">Menor custo</span>' : '') + '</td></tr>').join(''); }).join('') + '</tbody></table></div></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Cotações de pétreos e areia</h2></div><div class="tbl short"><table><thead><tr><th>Material</th><th>Código SICRO</th><th>Fornecedor</th><th class="r">Preço</th><th>Und</th><th>Data</th><th class="r">DMT pav.</th><th class="r">DMT não pav.</th><th>Fonte</th></tr></thead><tbody>' +
+      (S.cotacoes || []).map(c => '<tr><td>' + esc(c.material) + '</td><td class="mono">' + esc(c.codigoSicro || '') + '</td><td>' + esc(c.fornecedor) + '</td><td class="r num">' + n2(c.preco) + '</td><td>' + esc(c.unidade) + '</td><td>' + esc(c.data) + '</td><td class="r num">' + n3(c.dmtPav) + '</td><td class="r num">' + n3(c.dmtNaoPav) + '</td><td class="muted" style="font-size:.78rem">' + esc(c.fonte) + '</td></tr>').join('') + '</tbody></table></div></div>';
+  };
+
+  T.validacoes = () => {
+    const c = contagem(); const lst = VAL.filter(v => ui.valStatus === 'todos' || v.status === ui.valStatus);
+    return topo('Validações', 'Cada verificação aponta o artigo da Res. DNIT nº 8/2023 e as linhas afetadas. O resultado muda assim que um dado é corrigido.') +
+      '<div class="tabs">' + [['todos', 'Todas (' + VAL.length + ')'], ['erro', 'Não atende (' + c.erro + ')'], ['alerta', 'Atenção (' + c.alerta + ')'], ['ok', 'Atende (' + c.ok + ')']].map(([k, l]) => '<button data-act="valStatus" data-v="' + k + '" aria-pressed="' + (ui.valStatus === k) + '">' + l + '</button>').join('') + '</div>' +
+      '<div class="card flat">' + lst.map(v => '<div class="rule">' + pill(v.status) + '<div class="art">' + esc(v.id + ' · ' + v.art) + '</div><h3>' + esc(v.titulo) + '</h3><p>' + esc(v.detalhe) + (v.ref && v.ref.length ? ' <button class="btn sm" data-act="verLinhas" data-ids="' + esc(v.ref.join(',')) + '">Ver ' + v.ref.length + ' linha(s)</button>' : '') + '</p></div>').join('') + '</div>';
+  };
+
+  T.conferencia = () => {
+    if (!CMP) return topo('Conferência') + '<div class="empty"><h2>Sem planilha de origem</h2><p class="muted">Projetos criados a partir de uma planilha PATO guardam os valores dela para conferir o cálculo.</p></div>';
+    const byId = {}; S.linhas.forEach(L => byId[L.id] = L);
+    return topo('Conferência com a planilha de origem', 'O motor recalcula todas as linhas a partir dos dados de entrada e compara com os valores gravados na planilha original. É o critério de aceite do sistema.') +
+      '<div class="kpis"><div class="kpi"><span>Linhas iguais à planilha</span><b>' + CMP.linhasOk + ' de ' + CMP.linhasTotal + '</b></div>' + CMP.totais.map(t => '<div class="kpi"><span>' + esc(t.nome) + '</span><b>' + (t.ok ? 'Igual' : 'Diferente') + '</b><span class="num">' + brl(t.obtido) + '</span></div>').join('') + '</div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Totais</h2></div><div class="tbl short"><table><thead><tr><th>Total</th><th class="r">Planilha de origem</th><th class="r">Sistema</th><th class="r">Diferença</th><th></th></tr></thead><tbody>' +
+      CMP.totais.map(t => '<tr><td>' + esc(t.nome) + '</td><td class="r num">' + n2(t.esperado) + '</td><td class="r num">' + n2(t.obtido) + '</td><td class="r num">' + n2(t.obtido - t.esperado) + '</td><td>' + pill(t.ok ? 'ok' : 'alerta') + '</td></tr>').join('') +
+      (S.gabarito.totais.contratoSD ? (() => { const ct = E.compute(S, { dsmNoPrazo: true }).contrato.sd.total; return '<tr><td>Planilha contratual (' + S.projeto.prazoAnos + ' anos), no mesmo critério da origem</td><td class="r num">' + n2(S.gabarito.totais.contratoSD) + '</td><td class="r num">' + n2(ct) + '</td><td class="r num">' + n2(ct - S.gabarito.totais.contratoSD) + '</td><td>' + pill(Math.abs(ct - S.gabarito.totais.contratoSD) < 0.05 ? 'ok' : 'alerta') + '</td></tr>'; })() : '') + '</tbody></table></div></div>' +
+      (CMP.subtotais.length ? '<div class="card"><h2>Subtotais da planilha de origem que não fecham</h2><p class="muted">As linhas batem uma a uma, mas o subtotal gravado na planilha não é a soma delas. O sistema usa a soma correta.</p><div class="tbl short"><table><thead><tr><th>Grupo</th><th>Condição</th><th class="r">Soma das linhas</th><th class="r">Subtotal na planilha</th><th class="r">Diferença</th></tr></thead><tbody>' +
+        CMP.subtotais.map(s => '<tr><td>' + esc(s.item + ' · ' + s.titulo) + '</td><td>' + (s.condicao === 'sd' ? 'Sem desoneração' : 'Com desoneração') + '</td><td class="r num">' + n2(s.somaLinhas) + '</td><td class="r num">' + n2(s.subtotalPlanilha) + '</td><td class="r num"><b>' + n2(s.diferenca) + '</b></td></tr>').join('') + '</tbody></table></div></div>' : '') +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Linhas com diferença</h2></div>' + (CMP.diffs.length ? '<div class="tbl short"><table><thead><tr><th>Item</th><th>Código</th><th>Campo</th><th class="r">Planilha</th><th class="r">Sistema</th></tr></thead><tbody>' + CMP.diffs.map(d => '<tr class="clk" data-act="linha" data-id="' + d.id + '"><td class="mono">' + esc(byId[d.id] ? byId[d.id].item : d.id) + '</td><td class="mono">' + esc(byId[d.id] ? byId[d.id].codigo : '') + '</td><td>' + esc({ qtd: 'Quantidade', sd: 'Parcial sem desoneração', cd: 'Parcial com desoneração' }[d.campo] || d.campo) + '</td><td class="r num">' + n3(d.esperado) + '</td><td class="r num">' + n3(d.obtido) + '</td></tr>').join('') + '</tbody></table></div>' : '<p class="muted" style="padding:0 16px 16px">Nenhuma. Todas as quantidades e parciais conferem com a planilha.</p>') + '</div>';
+  };
+
+  T.saidas = () => {
+    const t = R.totais; const ab = R.contrato[ui.abc]; const dob = !!S.parametros.dsmMultiplicaPrazo;
+    return topo('Saídas e exportação', 'Resumo do PATO, curva ABC (Anexo XXI) e planilha contratual para o prazo do contrato.', '<button class="btn pri" data-act="xlsx">Baixar planilha (.xlsx)</button><button class="btn" data-act="json">Baixar dados do projeto (.json)</button>') +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Resumo do plano anual de trabalho e orçamento</h2></div><div class="tbl short"><table><thead><tr><th>Item</th><th>Família de serviços</th><th class="r">Sem desoneração</th><th class="r">%</th><th class="r">Com desoneração</th><th class="r">%</th></tr></thead><tbody>' +
+      R.resumo.map(g => '<tr><td class="mono">' + esc(g.item) + '</td><td>' + esc(g.titulo) + '</td><td class="r num">' + n2(g.sd) + '</td><td class="r num">' + pct(g.pSD) + '</td><td class="r num">' + n2(g.cd) + '</td><td class="r num">' + pct(g.pCD) + '</td></tr>').join('') +
+      '<tr class="g"><td></td><td>Total do PATO (12 meses)</td><td class="r num">' + n2(t.sd) + '</td><td class="r num">100%</td><td class="r num">' + n2(t.cd) + '</td><td class="r num">100%</td></tr></tbody></table></div></div>' +
+      '<div class="card"><div class="card-h"><h2>Planilha contratual · ' + S.projeto.prazoAnos + ' ano(s)</h2><label class="row"><input type="checkbox" data-edit="parametros|dsmMultiplicaPrazo" data-type="bool"' + (dob ? ' checked' : '') + '> Multiplicar também os DSM pelo prazo (como na planilha original)</label></div>' +
+      '<div class="kpis"><div class="kpi"><span>Contrato sem desoneração</span><b>' + brl(R.contrato.sd.total) + '</b></div><div class="kpi"><span>Contrato com desoneração</span><b>' + brl(R.contrato.cd.total) + '</b></div><div class="kpi"><span>Efeito de repetir os DSM</span><b>' + brl(R.contrato.difDSM[t.condicao]) + '</b></div></div>' +
+      '<p class="note' + (dob ? ' w' : '') + '">' + (dob ? 'Os DSM são obras pontuais e não têm natureza continuada (art. 9º, § 3º). Multiplicá-los pelo prazo repete essas obras no segundo ano.' : 'Conservação multiplicada pelo prazo e DSM uma única vez, conforme o art. 9º, § 3º.') + '</p></div>' +
+      '<div class="card flat"><div class="card-h" style="padding:14px 16px 0"><h2>Curva ABC do contrato</h2><div class="tabs"><button data-act="abc" data-v="sd" aria-pressed="' + (ui.abc === 'sd') + '">Sem desoneração</button><button data-act="abc" data-v="cd" aria-pressed="' + (ui.abc === 'cd') + '">Com desoneração</button></div></div><p class="muted" style="padding:0 16px">Faixa A até 80% do valor acumulado, B até 95%, C o restante.</p><div class="tbl"><table><thead><tr><th>Faixa</th><th>Código</th><th>Discriminação</th><th class="r">Quantidade</th><th>Und</th><th class="r">Preço unit.</th><th class="r">Parcial</th><th class="r">%</th><th class="r">% acum.</th></tr></thead><tbody>' +
+      ab.itens.map(i => '<tr><td><span class="pill ' + (i.faixa === 'A' ? 'erro' : i.faixa === 'B' ? 'alerta' : 'info') + '">' + i.faixa + '</span></td><td class="mono">' + esc(i.codigo) + '</td><td>' + esc(i.descricao) + '</td><td class="r num">' + n3(i.qtd) + '</td><td>' + esc(i.unidade) + '</td><td class="r num">' + n2(i.pu) + '</td><td class="r num">' + n2(i.total) + '</td><td class="r num">' + pct(i.p) + '</td><td class="r num">' + pct(i.acum) + '</td></tr>').join('') + '</tbody></table></div></div>';
+  };
+
+  const BIB_CATS = ['Normas e resoluções', 'Manuais do IPR', 'Custos e SICRO', 'Álbuns de drenagem e projetos-tipo', 'Documentos do trecho'];
+  T.biblioteca = () => {
+    const por = {}; biblioteca.forEach(b => (por[b.categoria || 'Documentos do trecho'] = por[b.categoria || 'Documentos do trecho'] || []).push(b));
+    return topo('Biblioteca técnica', 'Normas, manuais, álbuns de projeto-tipo e documentos do trecho em um só lugar.') +
+      (assets ? '<div class="card"><h2>Acrescentar documento</h2><div class="form"><label class="f">Título<input id="bibTit" placeholder="Ex.: Álbum de projetos-tipo de drenagem (IPR 736)"></label><label class="f">Categoria<select id="bibCat">' + BIB_CATS.map(c => '<option>' + esc(c) + '</option>').join('') + '</select></label><label class="f">Link (opcional)<input id="bibLink" placeholder="https://www.gov.br/dnit/…"></label></div><div class="row"><button class="btn pri" data-act="bibUp">Enviar arquivo PDF ou imagem</button><button class="btn" data-act="bibLink">Salvar só o link</button><span class="muted" style="font-size:.82rem">Arquivos até 20 MB.</span></div></div>' : (db ? '<div class="card"><div class="form"><label class="f">Título<input id="bibTit"></label><label class="f">Categoria<select id="bibCat">' + BIB_CATS.map(c => '<option>' + esc(c) + '</option>').join('') + '</select></label><label class="f">Link<input id="bibLink" placeholder="https://"></label></div><div class="row"><button class="btn pri" data-act="bibLink">Salvar link</button><span class="muted" style="font-size:.82rem">O envio de arquivos fica disponível para quem pode editar esta página.</span></div></div>' : '')) +
+      (biblioteca.length ? BIB_CATS.concat(Object.keys(por).filter(k => !BIB_CATS.includes(k))).filter(c => por[c]).map(c => '<div class="card"><h2>' + esc(c) + '</h2>' + por[c].sort((a, b) => String(a.titulo).localeCompare(String(b.titulo))).map(b => '<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line2);padding-bottom:6px"><div><a href="' + esc(b.url || b.link) + '" target="_blank" rel="noopener"><b>' + esc(b.titulo) + '</b></a><div class="muted" style="font-size:.8rem">' + esc(b.nota || (b.nome ? b.nome + ' · ' + Math.round((b.tamanho || 0) / 1024) + ' KB' : (b.link || ''))) + '</div></div>' + (b.assetId || b.link ? '<button class="btn sm" data-act="bibDel" data-id="' + esc(b.id) + '">Remover</button>' : '') + '</div>').join('') + '</div>').join('') : '<div class="empty"><h2>Biblioteca vazia</h2><p class="muted">Acrescente a Res. 8/2023, o Manual de Conservação (IPR 710), o álbum de drenagem (IPR 736) e os documentos do trecho.</p></div>');
+  };
+
+  T.requisitos = () => {
+    const mods = [
+      ['Cabeçalho e SNV', 'Calculado e conferido', 'Segmentos cobrem o trecho; conferência com a planilha oficial do SNV.'],
+      ['Inventário (Anexos II e III)', 'Entrada importada', 'Resumo do inventário e quantidades de cadastro. Importação do modelo SR/MT ou tabela chave/valor.'],
+      ['ICP e histórico (Anexo XXVII)', 'Calculado', 'ICP = 50·panela + 30·remendo + 20·trinca; km por intervenção; quantidade = máx(ICP, histórico).'],
+      ['Roçada (DNIT 182/2018-PRO)', 'Calculado', 'Média ponderada pelo inverso da distância das estações pluviométricas.'],
+      ['Grupo de desempenho I', 'Calculado', 'Preço mensal a partir de quantidade por km, nível de esforço, frequência e preços unitários.'],
+      ['FIT (Anexo VI)', 'Calculado', 'FIT = 1 + (A1 + A2)/(DMTp·60).'],
+      ['Transportes (Anexo VIII)', 'Calculado', 'Momento = quantidade × consumo × DMT × FIT, por caminhão e tipo de via.'],
+      ['Linhas do PATO', 'Calculado', 'Base × fator com truncamento ou arredondamento; insumos derivados por taxa; preço pelo código.'],
+      ['Totais, resumo, curva ABC e contrato', 'Calculado', 'Resumo por família, condição mais vantajosa, faixas A/B/C, contrato pelo prazo.'],
+      ['Sinalização de obras (Anexo XIII)', 'Entrada importada', 'un.dia por dispositivo lido da planilha. Cálculo pela duração dos serviços: próxima etapa.'],
+      ['Preços SICRO e binômio', 'Entrada importada', 'Banco de preços por código. Binômio com escolha do menor custo. Composições próprias: próxima etapa.'],
+      ['Administração local, canteiro, usina e mobilização', 'Entrada importada', 'Preço lido da planilha auxiliar. Composição detalhada: próxima etapa.'],
+      ['Prorrogação (Anexo XXIV) e adequação (Anexo XXV)', 'Planejado', 'Vantajosidade, desconto adicional e deflator do art. 96.'],
+    ];
+    const ent = [
+      ['Projeto', 'nome, rodovia, trecho, subtrecho, segmento, kmIni, kmFim, extensao, snv, snvVersao, unidadeLocal, tipo, dataBase, aberturaLicitacao, prazoAnos, dataInventario'],
+      ['Segmento SNV', 'snv, tipoPista, kmIni, kmFim, latIni, lonIni, latFim, lonFim, revestimento, faixas, largura'],
+      ['Elemento de inventário', 'chave, rotulo, valor, unidade, grupo, fonte'],
+      ['Levantamento ICP (por km)', 'sentido (C/D), kmIni, kmFim, panela, remendo, trinca (Alta, Média, Baixa, SR), intervPrim, intervSec'],
+      ['Regra ICP', 'id, servico, classes [coluna, intervenção], neExpr, unidade, neFonte, somaRegras'],
+      ['Histórico executado', 'regra, valor, contrato, medicao, memoria'],
+      ['Linha do PATO', 'id, item, origem, codigo, descricao, baseExpr, unidadeBase, fatorExpr, unidade, modo (trunc, round, icp), casas, icpRegra, justificativa'],
+      ['Grupo', 'item, titulo, linha'],
+      ['Preço', 'codigo, descricao, unidade, sd, cd, fonte'],
+      ['Croqui', 'chave (material+origem+destino), material, origem, destino, LN, RP, P, Pu'],
+      ['FIT', 'frente, codigo, chave, vmdf'],
+      ['Bloco de transporte', 'id, frente, codigo, descricao, linhas [servico, material, origem, destino, consumoExpr, faixaPATO, colunaDMT, usaFIT, fitFrente]'],
+      ['Desempenho', 'codigo, grupo, qtdTotalExpr, ne, freqExpr, qtdPorKmExpr, unidade'],
+      ['Binômio', 'material, origens [origem, uf, local, aquisicao, transporte]'],
+      ['Cotação', 'material, codigoSicro, fornecedor, preco, unidade, densidade, data, dmtPav, dmtNaoPav, fonte'],
+      ['Gabarito', 'linhas {id: base, fator, qtd, puSD, sd, puCD, cd}, totais, resumo, icp, transportes'],
+      ['Documento da biblioteca', 'titulo, categoria, assetId ou link, nome, tamanho, enviadoEm'],
+    ];
+    const imp = [
+      ['Planilha PATO completa', 'Abas CAPA, PATO, BD, RESUMO_INVENT, ICP, CALCULO_ICP e, se houver, CAD_SEG, CAD_PISTA, CROQUI, FIT, TRANSPORTES_CONSERVA, TRANSPORTES_DSM, DESEMPENHO, NE_ROCADA, UN_DIA, BINOMIO_ANP, RESUMO_PATO, QUANTIDADES'],
+      ['Inventário', 'Aba RESUMO_INVENT do modelo, ou colunas chave, valor, unidade'],
+      ['Levantamento ICP', 'Aba ICP do modelo, ou colunas km inicial, km final, sentido, panela, remendo, trinca, intervenção primária, intervenção secundária'],
+      ['Histórico', 'Colunas serviço (RL, TP, RP, COR, FSD, FSC, MICRO), quantidade, contrato, medição'],
+      ['SNV', 'Planilha oficial do SNV: código, km inicial, km final, extensão, superfície'],
+      ['Preços', 'Aba BD do modelo, ou colunas código, descrição, unidade, preço sem desoneração, preço com desoneração'],
+      ['Cotações', 'Colunas material, fornecedor, preço, unidade, data, município, DMT'],
+    ];
+    return topo('Requisitos e modelo de dados', 'Especificação viva do sistema: módulos, entidades, formatos de importação e regras. As regras abaixo são as mesmas que rodam na tela de validações.') +
+      '<div class="card doc"><h2>Objetivo e critério de aceite</h2><p>Gerar o plano anual de trabalho e orçamento de contratos de conservação rodoviária conforme a Res. DNIT nº 8/2023, com cada quantidade rastreável até a sua origem. O sistema é aceito quando reproduz, linha a linha, uma planilha PATO aprovada usando apenas os dados de entrada dela. Na BR-158/MT (km 326,00 ao km 416,80) o motor confere ' + (CMP ? CMP.linhasOk + ' de ' + CMP.linhasTotal : '—') + ' linhas e o total sem desoneração.</p>' +
+      '<h2>Fluxo (art. 19)</h2><ul><li>Inventário dos elementos geradores de conservação</li><li>Condição e intensidade dos serviços (ICP, roçada, desempenho)</li><li>Quantidades pelos níveis de esforço e pelo histórico</li><li>Quantificação dos DSM com memória direta</li><li>Preços, transportes, consolidação, validação e saídas</li></ul></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Módulos</h2></div><div class="tbl short"><table><thead><tr><th>Módulo</th><th>Situação</th><th>Regra</th></tr></thead><tbody>' + mods.map(m => '<tr><td><b>' + esc(m[0]) + '</b></td><td>' + pill(m[1] === 'Calculado' || m[1] === 'Calculado e conferido' ? 'ok' : m[1] === 'Planejado' ? 'info' : 'alerta').replace(/>[^<]+<\/span>$/, '>' + esc(m[1]) + '</span>') + '</td><td>' + esc(m[2]) + '</td></tr>').join('') + '</tbody></table></div></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Modelo de dados</h2><p class="muted">Cada projeto é guardado em partes: projeto, inventário, ICP, linhas, transportes, apoio, preços (em blocos de ' + CHUNK + ' códigos), SNV e gabarito.</p></div><div class="tbl short"><table><thead><tr><th>Entidade</th><th>Campos</th></tr></thead><tbody>' + ent.map(e => '<tr><td><b>' + esc(e[0]) + '</b></td><td class="mono" style="font-size:.76rem">' + esc(e[1]) + '</td></tr>').join('') + '</tbody></table></div></div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Regras de validação</h2></div>' + VAL.map(v => '<div class="rule"><span class="chip">' + esc(v.id) + '</span><div class="art">' + esc(v.art) + '</div><h3>' + esc(v.titulo) + '</h3></div>').join('') + '</div>' +
+      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Formatos de importação</h2></div><div class="tbl short"><table><thead><tr><th>Arquivo</th><th>Estrutura esperada</th></tr></thead><tbody>' + imp.map(e => '<tr><td><b>' + esc(e[0]) + '</b></td><td>' + esc(e[1]) + '</td></tr>').join('') + '</tbody></table></div></div>';
+  };
+
+  // ---------------- render ----------------
+  function render() {
+    navHTML();
+    const v = view(); const el = $('#view'); const y = window.scrollY;
+    if (!S) { el.innerHTML = semProjeto(); return; }
+    if (!R) recompute();
+    try { el.innerHTML = (T[v] || T.painel)(); } catch (e) { console.error(e); el.innerHTML = '<div class="empty"><h2>Não foi possível montar esta tela</h2><p class="muted">' + esc(e.message) + '</p></div>'; }
+    window.scrollTo(0, y);
+  }
+
+  // ---------------- eventos ----------------
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.id === 'mobnav') { location.hash = t.value; return; }
+    if (t.dataset.act === 'trocar') { (async () => { await salvar(); await abrirProjeto(t.value); render(); })(); return; }
+    if (t.dataset.ui) { ui[t.dataset.ui] = t.type === 'checkbox' ? t.checked : t.value; render(); return; }
+    if (t.dataset.edit) {
+      const ty = t.dataset.type || 'text'; let v = ty === 'bool' ? t.checked : t.value;
+      if (ty === 'num') { v = parseNum(t.value); if (v == null) { toast('Valor numérico inválido: ' + t.value); render(); return; } }
+      setPath(t.dataset.edit, v); recompute(); render();
+    }
+  });
+  document.addEventListener('input', e => { const t = e.target; if (t.dataset.ui === 'filtro' || t.dataset.ui === 'precoBusca') { ui[t.dataset.ui] = t.value; clearTimeout(render._t); render._t = setTimeout(() => { const pos = t.selectionStart; render(); const n = document.querySelector('[data-ui="' + t.dataset.ui + '"]'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) { } } }, 250); } });
+  document.addEventListener('click', async e => {
+    const imp = e.target.closest('[data-imp]');
+    if (imp) { try { await ACOES_IMPORT[imp.dataset.imp](); } catch (err) { console.error(err); toast(err.message || String(err), 7000); } return; }
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'fechar') { if (e.target.closest('[data-stop]') && !e.target.closest('button[data-act="fechar"]')) return; $('#drawer').innerHTML = ''; return; }
+    const act = a.dataset.act;
+    if (act === 'linha') return abrirLinha(a.dataset.id);
+    if (act === 'salvarLinha') {
+      const L = S.linhas.find(x => x.id === a.dataset.id); const d = $('#drawer'); const backup = JSON.stringify(L);
+      d.querySelectorAll('[data-l]').forEach(i => L[i.dataset.l] = i.value.trim());
+      recompute();
+      if (R && R.linhas[L.id] && R.linhas[L.id].erro) { Object.assign(L, JSON.parse(backup)); recompute(); $('#lerr').textContent = 'Não aplicado: ' + R.erros.slice(-1)[0]; return; }
+      markDirty('linhas'); d.innerHTML = ''; render(); toast('Linha ' + L.item + ' atualizada.'); return;
+    }
+    if (act === 'sentido') { ui.sentido = a.dataset.v; return render(); }
+    if (act === 'valStatus') { ui.valStatus = a.dataset.v; return render(); }
+    if (act === 'abc') { ui.abc = a.dataset.v; return render(); }
+    if (act === 'verLinhas') { ui.linhasDestaque = a.dataset.ids.split(','); ui.filtro = ''; ui.origem = ''; ui.soComProblema = false; ui.derivados = true; location.hash = 'planilha'; return render(); }
+    if (act === 'limparDestaque') { ui.linhasDestaque = null; return render(); }
+    if (act === 'addSeg') { S.projeto.segmentos = S.projeto.segmentos || []; S.projeto.segmentos.push({ snv: '', tipoPista: 'PISTA SIMPLES', kmIni: S.projeto.kmIni, kmFim: S.projeto.kmFim }); markDirty('projeto'); recompute(); return render(); }
+    if (act === 'delSeg') { S.projeto.segmentos.splice(Number(a.dataset.i), 1); markDirty('projeto'); recompute(); return render(); }
+    if (act === 'xlsx') return exportarXLSX();
+    if (act === 'json') return exportarJSON();
+    if (act === 'bibUp') {
+      const tit = $('#bibTit').value.trim(), cat = $('#bibCat').value, link = $('#bibLink').value.trim();
+      const f = await escolherArquivo('.pdf,image/*'); if (!f) return;
+      try { toast('Enviando ' + f.name + '…', 10000); const up = await assets.upload(f); await db.collection('biblioteca').add({ titulo: tit || f.name.replace(/\.[^.]+$/, ''), categoria: cat, assetId: up.id, url: up.url, nome: f.name, tamanho: up.sizeBytes, tipo: up.contentType, link: link || '', enviadoEm: new Date().toISOString() }); toast('Documento acrescentado.'); }
+      catch (err) { toast('Não foi possível enviar: ' + (err.message || err.code), 7000); }
+      return;
+    }
+    if (act === 'bibLink') {
+      const tit = $('#bibTit').value.trim(), cat = $('#bibCat').value, link = $('#bibLink').value.trim();
+      if (!/^https?:\/\//.test(link)) { toast('Informe um link começando com https://'); return; }
+      try { await db.collection('biblioteca').add({ titulo: tit || link, categoria: cat, link, enviadoEm: new Date().toISOString() }); toast('Link salvo.'); } catch (err) { toast('Não foi possível salvar: ' + (err.message || err.code)); }
+      return;
+    }
+    if (act === 'bibDel') {
+      const b = biblioteca.find(x => x.id === a.dataset.id); if (!b) return;
+      if (a.dataset.confirm !== '1') { a.dataset.confirm = '1'; a.textContent = 'Confirmar remoção'; setTimeout(() => { if (a.isConnected) { a.dataset.confirm = ''; a.textContent = 'Remover'; } }, 4000); return; }
+      try { if (b.assetId && assets) { try { await assets.delete(b.assetId); } catch (x) { } } await db.doc('biblioteca/' + b.id).delete(); toast('Documento removido.'); } catch (err) { toast('Não foi possível remover: ' + (err.message || err.code)); }
+    }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#drawer').innerHTML) $('#drawer').innerHTML = ''; });
+  window.addEventListener('hashchange', () => { $('#drawer').innerHTML = ''; if (view() !== 'planilha') ui.linhasDestaque = null; render(); window.scrollTo(0, 0); });
+  window.addEventListener('beforeunload', () => { if (dirty.size) salvar(); });
+
+  // ---------------- início ----------------
+  (async function init() {
+    render();
+    const c = window.claude;
+    if (c && c.use) {
+      const [d, u, a, dl] = await Promise.all(['db', 'user', 'assets', 'downloads'].map(n => c.use(n).catch(() => null)));
+      db = d; user = u; assets = a; downloads = dl;
+      if (user && user.can) { try { const w = await user.can('data.write'); if (w === false) canWrite = false; } catch (e) { } }
+    }
+    if (db) {
+      try {
+        await carregarLista();
+        const pref = sget('pato.pid'); const pid = projetos.find(p => p.id === pref) ? pref : (projetos[0] && projetos[0].id);
+        if (pid) await abrirProjeto(pid); else setSave(canWrite ? 'Nenhum projeto salvo' : 'Somente leitura');
+        unsubBib = db.collection('biblioteca').onSnapshot(s => { biblioteca = s.docs.map(x => Object.assign({ id: x.id }, x.data())); if (view() === 'biblioteca') render(); }, () => { });
+      } catch (e) { console.error(e); setSave('Base de projetos indisponível agora'); }
+    } else setSave('Base de projetos indisponível nesta visualização');
+    render();
+  })();
+})();
+
+</script>

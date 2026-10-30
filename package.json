@@ -1,0 +1,11 @@
+{
+  "name": "patov2",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema PATO SR/DNIT/MT — plano anual de trabalho e orçamento conforme a Resolução DNIT nº 8/2023",
+  "scripts": {
+    "build": "node tools/build.js",
+    "conferir": "node tests/conferencia.js"
+  },
+  "devDependencies": { "xlsx": "0.18.5" }
+}

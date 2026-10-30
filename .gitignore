@@ -1,0 +1,6 @@
+node_modules/
+*.xlsx
+*.xlsm
+*.xls
+dados/
+seed/
