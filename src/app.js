@@ -23,7 +23,7 @@
   let projetos = []; let PID = null; let S = null; let R = null; let VAL = []; let CMP = null;
   const dirty = new Set(); let saving = false; let saveTimer = null; let saveMsg = '';
   let biblioteca = []; let unsubBib = null;
-  const ui = { filtro: '', origem: '', soComProblema: false, derivados: true, sentido: 'todos', valStatus: 'todos', precoBusca: '', linhasDestaque: null, abc: 'sd' };
+  const ui = { filtro: '', origem: '', soComProblema: false, aDefinir: false, derivados: true, sentido: 'todos', valStatus: 'todos', precoBusca: '', linhasDestaque: null, abc: 'sd' };
 
   // ---------------- utilitários ----------------
   function toast(msg, ms) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, ms || 3200); }
@@ -93,7 +93,7 @@
     } finally { saving = false; }
   }
   async function criarProjeto(estado, origem) {
-    const base = (estado.projeto.rodovia + '-km' + Math.round(estado.projeto.kmIni || 0) + '-' + Math.round(estado.projeto.kmFim || 0)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'projeto';
+    const base = (estado.projeto.rodovia + '-km' + String(estado.projeto.kmIni || 0).replace('.', '-') + '-' + String(estado.projeto.kmFim || 0).replace('.', '-')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'projeto';
     let pid = base, k = 2; while (projetos.some(p => p.id === pid)) pid = base + '-' + (k++);
     S = estado; PID = pid; S.cotacoes = S.cotacoes || []; S.justificativas = S.justificativas || {};
     projetos.push({ id: pid, nome: S.projeto.nome, rodovia: S.projeto.rodovia, segmento: S.projeto.segmento, partes: Object.keys(PARTS), precosChunks: 1, origem });
@@ -147,11 +147,7 @@
       const uf = S.projeto.uf || 'MT'; const f3 = ref.filter(r => String(r.codigo).toUpperCase().includes('B' + uf)); if (f3.length) ref = f3;
       S.snvRef = ref; markDirty('snv'); recompute(); render(); toast(ref.length + ' segmentos do SNV carregados para conferência.');
     },
-    async precos() {
-      const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
-      const p = IMP.importarPrecos(wb, XLSX); const n = Object.keys(p).length; if (!n) throw new Error('Nenhum preço encontrado.');
-      Object.assign(S.precos, p); markDirty('precos'); recompute(); render(); toast(n + ' preços importados de ' + f.name + '.');
-    },
+    async precos() { abrirImportPrecos(); },
     async cotacoes() {
       const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
       const c = IMP.importarCotacoes(wb, XLSX); S.cotacoes = (S.cotacoes || []).concat(c.map(x => Object.assign(x, { fonte: f.name })));
@@ -207,11 +203,11 @@
   }
   function topo(titulo, sub, acoes) {
     const opts = projetos.map(p => '<option value="' + esc(p.id) + '"' + (p.id === PID ? ' selected' : '') + '>' + esc(p.nome || p.id) + '</option>').join('');
-    return '<div class="top"><div><div class="meta">' + (S ? esc(S.projeto.rodovia + ' · ' + S.projeto.segmento) : '') + '</div><h1>' + esc(titulo) + '</h1>' + (sub ? '<p class="muted">' + sub + '</p>' : '') + '</div><div class="row">' + (acoes || '') +
+    return '<div class="top"><div><div class="meta">' + (S ? esc(S.projeto.rodovia + ' · ' + S.projeto.segmento) : '') + '</div><h1>' + esc(titulo) + '</h1>' + (sub ? '<p class="muted">' + sub + '</p>' : '') + '</div><div class="row">' + (acoes || '') + '<button class="btn" data-act="novo">Novo PATO</button>' +
       (projetos.length > 1 ? '<label class="f">Projeto<select data-act="trocar">' + opts + '</select></label>' : '') + '</div></div>';
   }
   function semProjeto() {
-    return topo('Nenhum projeto aberto') + '<div class="empty"><h2>Comece por uma planilha PATO</h2><p class="muted">Importe uma planilha no modelo da SR/MT (abas CAPA, PATO, BD, RESUMO_INVENT, ICP e CALCULO_ICP). O sistema lê inventário, ICP, transportes, preços e a própria planilha como gabarito de conferência.</p><button class="btn pri" data-imp="pato">Importar planilha PATO (.xlsx)</button>' +
+    return topo('Nenhum projeto aberto') + '<div class="empty"><h2>Comece por uma planilha PATO</h2><p class="muted">Importe uma planilha no modelo da SR/MT (abas CAPA, PATO, BD, RESUMO_INVENT, ICP e CALCULO_ICP). O sistema lê inventário, ICP, transportes, preços e a própria planilha como gabarito de conferência.</p><div class="row" style="justify-content:center"><button class="btn pri" data-imp="pato">Importar planilha PATO (.xlsx)</button><button class="btn" data-act="novo">Criar um PATO do zero</button></div>' +
       (db ? '' : '<p class="note w">A base de projetos não está disponível nesta visualização. A importação funciona, mas os dados ficam só nesta tela.</p>') + '</div>';
   }
 
@@ -236,6 +232,7 @@
       '<div class="kpi"><span>Contrato · ' + P.prazoAnos + ' ano(s)</span><b>' + brl(ctr.total) + '</b></div>' +
       '<div class="kpi"><span>DSM sobre o orçamento</span><b>' + pct(t.pDSM) + '</b></div></div>' +
       '<div class="flow">' + flow.map(f => '<a class="st" href="' + f[3] + '" style="text-decoration:none;color:inherit"><span class="chip">Etapa ' + f[0] + '</span><b>' + f[1] + '</b><span>' + esc(f[2]) + '</span></a>').join('') + '</div>' +
+      checklist() +
       '<div class="grid2"><div class="card"><div class="card-h"><h2>Pendências da Res. 8/2023</h2><span class="row">' + pill('erro') + ' ' + c.erro + ' ' + pill('alerta') + ' ' + c.alerta + ' ' + pill('ok') + ' ' + c.ok + '</span></div>' +
       (prob.length ? prob.slice(0, 8).map(v => '<div class="row" style="align-items:flex-start;flex-wrap:nowrap">' + pill(v.status) + '<div><b>' + esc(v.titulo) + '</b><div class="muted" style="font-size:.84rem">' + esc(v.detalhe) + '</div></div></div>').join('') : '<p class="muted">Nenhuma pendência.</p>') +
       '<a class="btn sm" href="#validacoes">Ver todas as ' + VAL.length + ' verificações</a></div>' +
@@ -303,7 +300,7 @@
     let body = '';
     R.ordem.forEach(o => {
       if (o.tipo === 'g') {
-        if (q || ui.origem || ui.soComProblema) return;
+        if (q || ui.origem || ui.soComProblema || ui.aDefinir) return;
         const t = grpTot[o.item];
         body += '<tr class="' + (o.nivel === 1 ? 'g1' : 'g') + '"><td>' + esc(o.item) + '</td><td colspan="9">' + esc(o.titulo) + '</td><td class="r num">' + (t ? n2(t.sd) : '') + '</td><td></td><td class="r num">' + (t ? n2(t.cd) : '') + '</td></tr>';
         return;
@@ -314,15 +311,16 @@
       if (q && !(L.item + ' ' + L.codigo + ' ' + (L.descricao || '')).toUpperCase().includes(q)) return;
       if (ui.origem && L.origem !== ui.origem) return;
       if (ui.soComProblema && !flags[L.id] && !r.erro && !r.semPreco) return;
+      if (ui.aDefinir && !(L.aPreencher && !r.base)) return;
       if (ui.linhasDestaque && !ui.linhasDestaque.includes(L.id)) return;
-      body += '<tr class="clk ' + (depth > 3 ? (depth > 4 ? 'sub2' : 'sub') : '') + (flags[L.id] || r.erro ? ' hl' : '') + '" data-act="linha" data-id="' + L.id + '"><td class="mono">' + esc(L.item) + '</td><td><span class="chip">' + esc(L.origem || '—') + '</span></td><td class="mono">' + esc(L.codigo) + '</td><td class="desc">' + esc(L.descricao || (S.precos[L.codigo] || {}).descricao || '') + (flags[L.id] ? ' <span class="pill alerta">' + flags[L.id].join(' ') + '</span>' : '') + (r.erro ? ' <span class="pill erro">erro</span>' : '') + '</td>' +
+      body += '<tr class="clk ' + (depth > 3 ? (depth > 4 ? 'sub2' : 'sub') : '') + (flags[L.id] || r.erro ? ' hl' : '') + '" data-act="linha" data-id="' + L.id + '"><td class="mono">' + esc(L.item) + '</td><td><span class="chip">' + esc(L.origem || '—') + '</span></td><td class="mono">' + esc(L.codigo) + '</td><td class="desc">' + esc(L.descricao || (S.precos[L.codigo] || {}).descricao || '') + (flags[L.id] ? ' <span class="pill alerta">' + flags[L.id].join(' ') + '</span>' : '') + (r.erro ? ' <span class="pill erro">erro</span>' : '') + (L.aPreencher && !r.base ? ' <span class="pill erro">a definir</span>' : '') + '</td>' +
         '<td class="r num">' + n3(r.base) + '</td><td>' + esc(L.unidadeBase || '') + '</td><td class="r num">' + n3(r.fator) + '</td><td class="r num"><b>' + n3(r.qtd) + '</b></td><td>' + esc(L.unidade || '') + '</td><td class="r num">' + n2(r.puSD) + '</td><td class="r num">' + n2(r.sd) + '</td><td class="r num">' + n2(r.puCD) + '</td><td class="r num">' + n2(r.cd) + '</td></tr>';
     });
     const t = R.totais;
     return topo('Planilha PATO', 'Quantidades de 12 meses com preços sem e com desoneração (art. 33, j, r e s; art. 41). Clique numa linha para ver a memória de cálculo e editar.') +
       (ui.linhasDestaque ? '<p class="note w">Mostrando só as linhas apontadas pela verificação. <button class="btn sm" data-act="limparDestaque">Mostrar todas</button></p>' : '') +
       '<div class="row"><input type="search" placeholder="Buscar item, código ou serviço" data-ui="filtro" value="' + esc(ui.filtro) + '" style="min-width:240px"><select data-ui="origem"><option value="">Todas as origens</option>' + origens.map(o => '<option' + (ui.origem === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>' +
-      '<label class="row"><input type="checkbox" data-ui="derivados"' + (ui.derivados ? ' checked' : '') + '> Insumos derivados</label><label class="row"><input type="checkbox" data-ui="soComProblema"' + (ui.soComProblema ? ' checked' : '') + '> Só linhas com apontamento</label></div>' +
+      '<label class="row"><input type="checkbox" data-ui="derivados"' + (ui.derivados ? ' checked' : '') + '> Insumos derivados</label><label class="row"><input type="checkbox" data-ui="soComProblema"' + (ui.soComProblema ? ' checked' : '') + '> Só linhas com apontamento</label>' + (S.linhas.some(L => L.aPreencher) ? '<label class="row"><input type="checkbox" data-ui="aDefinir"' + (ui.aDefinir ? ' checked' : '') + '> Só quantidades a definir</label>' : '') + '<span style="flex:1"></span><button class="btn sm" data-act="addLinha">Acrescentar serviço</button><button class="btn sm" data-act="addDSM">Acrescentar grupo de DSM</button></div>' +
       '<div class="card flat"><div class="tbl"><table><thead><tr><th>Item</th><th>Origem</th><th>Código</th><th>Discriminação</th><th class="r">Inventário</th><th>Und</th><th class="r">Nível de esforço</th><th class="r">Quantidade</th><th>Und</th><th class="r">PU sem deson.</th><th class="r">Parcial sem deson.</th><th class="r">PU com deson.</th><th class="r">Parcial com deson.</th></tr></thead><tbody>' + body + '</tbody></table></div></div>' +
       '<div class="kpis"><div class="kpi"><span>Conservação rodoviária</span><b>' + brl(t.conservaSD) + '</b><span>' + brl(t.conservaCD) + ' com desoneração</span></div><div class="kpi"><span>DSM</span><b>' + brl(t.dsmSD) + '</b><span>' + brl(t.dsmCD) + ' com desoneração</span></div><div class="kpi"><span>Total geral</span><b>' + brl(t.sd) + '</b><span>' + brl(t.cd) + ' com desoneração</span></div></div>';
   };
@@ -339,10 +337,11 @@
       (g ? '<dt>Planilha de origem</dt><dd class="num">' + n3(g.qtd) + ' · ' + brl(g.sd) + ' · ' + brl(g.cd) + '</dd>' : '') + '</dl>' +
       '<div class="card"><h3>Memória de cálculo</h3>' +
       '<label class="f">Origem da quantidade<input data-l="origem" value="' + esc(L.origem || '') + '" list="origens"></label><datalist id="origens">' + ['INVENTÁRIO', 'ICP', 'HISTÓRICO', 'SICRO', 'PROD SICRO', 'RESOLUÇÃO', 'NOTA TÉCNICA', 'ESTIMATIVA', 'MANUAL', 'SMT', 'PRAZO PATO'].map(o => '<option value="' + o + '">').join('') + '</datalist>' +
+      (L.sugestao ? '<p class="note">Quantidade no modelo de origem: <span class="mono">' + esc(L.sugestao) + '</span>. Informe a memória de cálculo deste trecho. <button class="btn sm" data-act="usarSug" data-id="' + id + '">Usar a do modelo</button></p>' : '') +
       '<label class="f">Expressão da base<textarea rows="2" data-l="baseExpr">' + esc(L.baseExpr) + '</textarea></label>' +
       (L.modo === 'icp' ? '<p class="note">A quantidade vem da regra ' + esc(L.icpRegra) + ' na tela ICP e histórico. O fator mostrado é a quantidade dividida pela base.</p>' : '<label class="f">Expressão do fator (nível de esforço ou taxa)<textarea rows="2" data-l="fatorExpr">' + esc(L.fatorExpr) + '</textarea></label>') +
       '<label class="f">Justificativa técnica (art. 18 e art. 24)<textarea rows="3" data-l="justificativa" style="font-family:var(--f-body)">' + esc(L.justificativa || '') + '</textarea></label>' +
-      '<div class="row"><button class="btn pri" data-act="salvarLinha" data-id="' + id + '">Aplicar</button><span class="muted" id="lerr"></span></div>' +
+      '<div class="row"><button class="btn pri" data-act="salvarLinha" data-id="' + id + '">Aplicar</button><button class="btn" data-act="delLinha" data-id="' + id + '">Excluir linha</button><span class="muted" id="lerr"></span></div>' +
       '<details><summary>Como escrever as expressões</summary><ul style="margin:6px 0 0;padding-left:18px;font-size:.84rem;display:grid;gap:2px"><li><span class="mono">inv("pista_CA")</span> valor do inventário</li><li><span class="mono">qtd("L21")</span>, <span class="mono">base("L21")</span>, <span class="mono">fator("L21")</span> outra linha</li><li><span class="mono">icp("RP")</span> quantidade adotada pelo ICP; <span class="mono">icpKm("RP")</span> km de faixa</li><li><span class="mono">transp("…")</span> momento de transporte; <span class="mono">undia("CONSERVA",codigo)</span> sinalização de obras</li><li>Variáveis: <span class="mono">ext</span>, <span class="mono">prazo</span>, <span class="mono">PI</span>, <span class="mono">neRocada</span>; operadores + − × ÷ ^ e parênteses</li></ul></details>' +
       (L.memoriaPlanilha ? '<details><summary>Fórmulas na planilha de origem</summary><dl class="kv mono" style="font-size:.76rem;margin-top:6px"><dt>F</dt><dd>' + esc(L.memoriaPlanilha.F) + '</dd><dt>H</dt><dd>' + esc(L.memoriaPlanilha.H) + '</dd><dt>J</dt><dd>' + esc(L.memoriaPlanilha.J) + '</dd></dl></details>' : '') + '</div></div></div>';
   }
@@ -370,9 +369,16 @@
       (cod.length > 400 ? '<tr><td colspan="7" class="muted">Mostrando 400 de ' + cod.length + '. Use a busca.</td></tr>' : '') + '</tbody></table></div></div>' +
       '<div class="card flat"><div style="padding:14px 16px 0"><h2>Binômio de materiais betuminosos</h2><p class="muted">Portaria DNIT nº 1.977/2017: o orçamento adota a origem de menor custo total (aquisição + transporte, com BDI).</p></div><div class="tbl short"><table><thead><tr><th>Material</th><th>Origem</th><th>Local</th><th class="r">Aquisição (R$/t)</th><th class="r">Transporte (R$/t)</th><th class="r">Total (R$/t)</th><th></th></tr></thead><tbody>' +
       S.binomio.map(b => { const tot = o => (o.aquisicao || 0) + (o.transporte || 0); const min = Math.min(...b.origens.map(tot)); return b.origens.map((o, i) => '<tr><td>' + (i === 0 ? '<b>' + esc(b.material) + '</b>' : '') + '</td><td class="mono">' + esc(o.origem) + '</td><td>' + esc(o.local + '/' + o.uf) + '</td><td class="r num">' + n2(o.aquisicao) + '</td><td class="r num">' + n2(o.transporte) + '</td><td class="r num">' + n2(tot(o)) + '</td><td>' + (tot(o) === min ? '<span class="pill ok">Menor custo</span>' : '') + '</td></tr>').join(''); }).join('') + '</tbody></table></div></div>' +
-      '<div class="card flat"><div style="padding:14px 16px 0"><h2>Cotações de pétreos e areia</h2></div><div class="tbl short"><table><thead><tr><th>Material</th><th>Código SICRO</th><th>Fornecedor</th><th class="r">Preço</th><th>Und</th><th>Data</th><th class="r">DMT pav.</th><th class="r">DMT não pav.</th><th>Fonte</th></tr></thead><tbody>' +
-      (S.cotacoes || []).map(c => '<tr><td>' + esc(c.material) + '</td><td class="mono">' + esc(c.codigoSicro || '') + '</td><td>' + esc(c.fornecedor) + '</td><td class="r num">' + n2(c.preco) + '</td><td>' + esc(c.unidade) + '</td><td>' + esc(c.data) + '</td><td class="r num">' + n3(c.dmtPav) + '</td><td class="r num">' + n3(c.dmtNaoPav) + '</td><td class="muted" style="font-size:.78rem">' + esc(c.fonte) + '</td></tr>').join('') + '</tbody></table></div></div>';
+      cotacoesHTML();
   };
+  function cotacoesHTML() {
+    const mats = [...new Set(Object.values(S.croqui || {}).map(c => c.material).filter(Boolean))];
+    return '<div class="card flat"><div style="padding:14px 16px 0"><h2>Cotações de pétreos e areia</h2><p class="muted">Registre ao menos uma cotação por material com a distância até a pista. "Usar no croqui" leva a DMT da cotação para o croqui de ocorrências.</p></div>' +
+      '<div class="form" style="padding:0 16px"><label class="f">Material<input id="cMat" list="cMats"></label><datalist id="cMats">' + mats.map(m => '<option value="' + esc(m) + '">').join('') + '</datalist><label class="f">Fornecedor<input id="cForn"></label><label class="f">Município<input id="cMun"></label><label class="f">Preço<input id="cPreco" inputmode="decimal"></label><label class="f">Und<input id="cUn" value="t"></label><label class="f">Data<input id="cData" type="date"></label><label class="f">DMT pavimentada (km)<input id="cDp" inputmode="decimal"></label><label class="f">DMT não pavimentada (km)<input id="cDn" inputmode="decimal"></label></div>' +
+      '<div class="row" style="padding:0 16px"><button class="btn pri" data-act="addCot">Acrescentar cotação</button></div>' +
+      '<div class="tbl short"><table><thead><tr><th>Material</th><th>Fornecedor</th><th>Município</th><th class="r">Preço</th><th>Und</th><th>Data</th><th class="r">DMT pav.</th><th class="r">DMT não pav.</th><th>Fonte</th><th></th></tr></thead><tbody>' +
+      ((S.cotacoes || []).length ? S.cotacoes.map((c, i) => '<tr><td>' + esc(c.material) + '</td><td>' + esc(c.fornecedor) + '</td><td>' + esc(c.municipio || '') + '</td><td class="r num">' + n2(c.preco) + '</td><td>' + esc(c.unidade) + '</td><td>' + esc(c.data) + '</td><td class="r num">' + n3(c.dmtPav) + '</td><td class="r num">' + n3(c.dmtNaoPav) + '</td><td class="muted" style="font-size:.78rem">' + esc(c.fonte || '') + '</td><td class="row" style="flex-wrap:nowrap"><button class="btn sm" data-act="cotCroqui" data-i="' + i + '">Usar no croqui</button><button class="btn sm" data-act="delCot" data-i="' + i + '">Remover</button></td></tr>').join('') : '<tr><td colspan="10" class="muted">Nenhuma cotação registrada.</td></tr>') + '</tbody></table></div></div>';
+  }
 
   T.validacoes = () => {
     const c = contagem(); const lst = VAL.filter(v => ui.valStatus === 'todos' || v.status === ui.valStatus);
@@ -468,6 +474,166 @@
       '<div class="card flat"><div style="padding:14px 16px 0"><h2>Formatos de importação</h2></div><div class="tbl short"><table><thead><tr><th>Arquivo</th><th>Estrutura esperada</th></tr></thead><tbody>' + imp.map(e => '<tr><td><b>' + esc(e[0]) + '</b></td><td>' + esc(e[1]) + '</td></tr>').join('') + '</tbody></table></div></div>';
   };
 
+
+  // ---------------- novo PATO a partir de um modelo ----------------
+  function checklist() {
+    if (!S.parametros || !S.parametros.modeloOrigem) return '';
+    const inv = Object.values(S.inventario); const invOk = inv.filter(i => Number(i.valor) > 0).length;
+    const lev = (S.icp.levantamento || []).length; const hist = Object.values(S.icp.historico || {}).filter(h => Number(h.valor) > 0).length;
+    const pdb = S.parametros.precosDataBase === S.projeto.dataBase;
+    const cot = (S.cotacoes || []).length;
+    const dmt0 = []; Object.values(R.transportes).forEach(t => t.linhas.forEach(l => { if (l.qtd > 0 && !(l.dmt > 0)) dmt0.push(l.material); }));
+    const vmd0 = (S.fit || []).filter(f => !(Number(f.vmdf) > 0)).length;
+    const aDef = S.linhas.filter(L => L.aPreencher && !(R.linhas[L.id] && R.linhas[L.id].base)).length;
+    const seg = (S.projeto.segmentos || []).length;
+    const erros = VAL.filter(v => v.status === 'erro').length;
+    const it = [
+      [seg > 0, 'Segmentos do SNV cadastrados', seg + ' segmento(s)', '<a class="btn sm" href="#projeto">Abrir projeto</a>'],
+      [invOk > 0, 'Inventário anexado', invOk + ' de ' + inv.length + ' elementos com valor', '<button class="btn sm" data-imp="inventario">Importar inventário</button>'],
+      [lev > 0, 'Levantamento do pavimento (ICP)', lev + ' trechos', '<button class="btn sm" data-imp="icp">Importar levantamento</button>'],
+      [hist > 0, 'Histórico executado (opcional)', hist + ' serviço(s) com histórico', '<button class="btn sm" data-imp="historico">Importar histórico</button>'],
+      [pdb, 'Preços SICRO na data-base ' + (S.projeto.dataBase || '—'), pdb ? 'Banco na data-base do orçamento' : 'Banco atual na data-base ' + (S.parametros.precosDataBase || '—'), '<button class="btn sm" data-act="impPrecos">Importar preços</button>'],
+      [cot > 0, 'Cotações de pétreos e areia', cot + ' cotação(ões)', '<a class="btn sm" href="#precos">Inserir cotações</a>'],
+      [!dmt0.length && !vmd0, 'DMT do croqui e VMDf', (dmt0.length ? [...new Set(dmt0)].length + ' material(is) sem DMT' : 'DMT preenchidas') + (vmd0 ? ' · ' + vmd0 + ' sem VMDf' : ''), '<a class="btn sm" href="#transportes">Abrir transportes</a>'],
+      [!aDef, 'Quantidades por memória de cálculo', aDef ? aDef + ' linha(s) a definir' : 'Todas informadas', '<button class="btn sm" data-act="verADefinir">Preencher</button>'],
+      [!erros, 'Verificações da Res. 8/2023 sem erro', erros ? erros + ' verificação(ões) não atendida(s)' : 'Nenhum erro', '<a class="btn sm" href="#validacoes">Ver validações</a>'],
+    ];
+    const feitos = it.filter(x => x[0]).length;
+    return '<div class="card"><div class="card-h"><h2>Para completar este PATO</h2><span class="muted">' + feitos + ' de ' + it.length + ' etapas · modelo de origem: ' + esc(S.parametros.modeloOrigem) + '</span></div><div class="bar"><i style="width:' + (100 * feitos / it.length) + '%"></i></div>' +
+      it.map((x, i) => '<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line2);padding:6px 0"><div class="row" style="flex-wrap:nowrap"><span class="pill ' + (x[0] ? 'ok' : (i === 3 ? 'info' : 'alerta')) + '">' + (x[0] ? 'Feito' : 'Pendente') + '</span><div><b>' + esc(x[1]) + '</b><div class="muted" style="font-size:.82rem">' + esc(x[2]) + '</div></div></div>' + (x[0] && i !== 7 ? '' : x[3]) + '</div>').join('') +
+      '<div class="row"><a class="btn pri" href="#saidas">Gerar a planilha preenchida</a><span class="muted" style="font-size:.84rem">A exportação traz PATO, resumo, curva ABC, validações e memória de cálculo.</span></div></div>';
+  }
+  function abrirNovo() {
+    if (!projetos.length && !S) { toast('Importe primeiro uma planilha PATO aprovada para servir de modelo.', 6000); return; }
+    const mod = projetos.length ? projetos.map(p => '<option value="' + esc(p.id) + '"' + (p.id === PID ? ' selected' : '') + '>' + esc(p.nome || p.id) + '</option>').join('') : '<option value="">Projeto aberto</option>';
+    const hoje = new Date(); const mb = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    $('#drawer').innerHTML = '<div class="overlay" data-act="fechar"><div class="drawer" role="dialog" aria-label="Novo PATO" data-stop="1"><div class="card-h"><h2>Novo PATO</h2><button class="btn sm" data-act="fechar">Fechar</button></div>' +
+      '<p class="muted">O novo plano herda do modelo a estrutura de serviços, as regras do ICP, o grupo de desempenho e os transportes. Inventário, levantamento, histórico, cotações, DMT e quantidades por memória de cálculo começam vazios para você preencher.</p>' +
+      '<div class="form"><label class="f">Rodovia<input id="nRod" placeholder="BR-163/MT"></label><label class="f">km inicial<input id="nKi" inputmode="decimal"></label><label class="f">km final<input id="nKf" inputmode="decimal"></label>' +
+      '<label class="f">Trecho<input id="nTr"></label><label class="f">Subtrecho<input id="nSub"></label><label class="f">Códigos SNV<input id="nSnv" placeholder="163BMT0100 - 163BMT0120"></label><label class="f">Versão do SNV<input id="nSnvV" placeholder="202501A"></label><label class="f">Unidade local<input id="nUL"></label>' +
+      '<label class="f">Data-base (mês do SICRO)<input id="nDb" type="month" value="' + mb + '"></label><label class="f">Prazo do contrato (anos)<input id="nPz" inputmode="numeric" value="2"></label><label class="f">Largura da faixa (m)<input id="nLg" inputmode="decimal" value="3,6"></label>' +
+      '<label class="f">Modelo de origem<select id="nMod">' + mod + '</select></label></div>' +
+      '<label class="row"><input type="checkbox" id="nDSM"> Trazer também os DSM do modelo</label>' +
+      '<div class="row"><button class="btn pri" data-act="criarNovo">Criar PATO</button><span class="muted" id="nErr"></span></div></div></div>';
+  }
+  async function carregarEstado(pid) {
+    if (pid === PID && S) return JSON.parse(JSON.stringify(S));
+    const meta = projetos.find(p => p.id === pid); const st = {};
+    for (const p of (meta.partes || Object.keys(PARTS))) { if (/^precos/.test(p)) continue; const d = await db.doc('projetos/' + pid + '/partes/' + p).get(); if (d.exists) Object.assign(st, d.data()); }
+    st.precos = {}; for (let i = 0; i < (meta.precosChunks || 1); i++) { const d = await db.doc('projetos/' + pid + '/partes/precos_' + i).get(); if (d.exists) Object.assign(st.precos, d.data().precos || {}); }
+    return JSON.parse(JSON.stringify(st));
+  }
+  async function criarNovo() {
+    const v = id => $('#' + id).value.trim(); const err = m => { $('#nErr').textContent = m; };
+    const ki = parseNum(v('nKi')), kf = parseNum(v('nKf'));
+    if (!v('nRod')) return err('Informe a rodovia.'); if (ki == null || kf == null || kf <= ki) return err('Informe km inicial e km final, com o final maior que o inicial.');
+    if (!v('nDb')) return err('Escolha a data-base.');
+    const M = await carregarEstado(v('nMod') || PID); const modNome = (M.projeto || {}).nome || 'modelo';
+    const comDSM = $('#nDSM').checked;
+    const ext = Math.round((kf - ki) * 1000) / 1000;
+    const fmtKm = x => Number(x).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+    const segTxt = 'km ' + fmtKm(ki) + ' ao km ' + fmtKm(kf);
+    const N = {};
+    N.projeto = { nome: 'PATO ' + v('nRod') + ' ' + segTxt, rodovia: v('nRod'), trecho: v('nTr'), subtrecho: v('nSub'), segmento: segTxt, kmIni: ki, kmFim: kf, extensao: ext, snv: v('nSnv'), snvVersao: v('nSnvV'), prazoAnos: parseNum(v('nPz')) || 1, periodoMeses: 12, dataBase: v('nDb'), unidadeLocal: v('nUL'), uf: (v('nRod').match(/\/([A-Z]{2})/) || [])[1] || 'MT', tipo: 'pavimentada', aberturaLicitacao: '', dataInventario: '', segmentos: [] };
+    N.adm = Object.assign({}, M.adm || {});
+    N.parametros = { dsmMultiplicaPrazo: false, precosDataBase: (M.parametros || {}).precosDataBase || (M.projeto || {}).dataBase, bdiSD: (M.parametros || {}).bdiSD || null, bdiCD: (M.parametros || {}).bdiCD || null, modeloOrigem: modNome };
+    N.justificativas = {};
+    N.inventario = {}; Object.keys(M.inventario || {}).forEach(k => { N.inventario[k] = Object.assign({}, M.inventario[k], { valor: 0, fonte: 'A informar' }); });
+    N.icp = JSON.parse(JSON.stringify(M.icp)); N.icp.levantamento = []; N.icp.parametros = Object.assign({}, N.icp.parametros, { larguraFaixa: parseNum(v('nLg')) || 3.6, metodo: 'faixas' });
+    N.icp.historico = {}; N.icp.regras.forEach(r => N.icp.historico[r.id] = { valor: 0, contrato: '', medicao: '', memoria: '' });
+    const grupos = (M.grupos || []).slice().sort((a, b) => a.linha - b.linha);
+    const g02 = grupos.find(g => g.item === '02'); const corte = g02 && !comDSM ? g02.linha : Infinity;
+    N.grupos = grupos.filter(g => g.linha < corte);
+    N.linhas = (M.linhas || []).filter(L => L.linha < corte).map(L => {
+      const X = Object.assign({}, L); delete X.memoriaPlanilha; delete X.justificativa;
+      const soLiteral = X.modo !== 'icp' && !/[a-zA-Z_]/.test(String(X.baseExpr).replace(/[eE][+-]?\d/g, ''));
+      if (soLiteral && X.origem !== 'PRAZO PATO') { X.aPreencher = true; X.sugestao = X.baseExpr; X.baseExpr = '0'; }
+      return X;
+    });
+    N.transportes = (M.transportes || []).filter(b => comDSM || b.frente === 'CONSERVA');
+    N.croqui = {}; Object.keys(M.croqui || {}).forEach(k => { if (!comDSM && /DSM/.test(k)) return; N.croqui[k] = Object.assign({}, M.croqui[k], { LN: 0, RP: 0, P: 0, Pu: 0 }); });
+    N.fit = (M.fit || []).filter(f => comDSM || f.frente === 'CONSERVA').map(f => Object.assign({}, f, { vmdf: 0, fitPlanilha: null }));
+    N.desempenho = JSON.parse(JSON.stringify(M.desempenho || null));
+    N.rocada = JSON.parse(JSON.stringify(M.rocada || { estacoes: [] })); N.rocada.neAdotado = '';
+    N.undia = JSON.parse(JSON.stringify(M.undia || {}));
+    N.binomio = JSON.parse(JSON.stringify(M.binomio || []));
+    N.precos = JSON.parse(JSON.stringify(M.precos || {}));
+    N.cotacoes = [];
+    $('#drawer').innerHTML = '';
+    if (db) await criarProjeto(N, 'Criado do zero a partir de ' + modNome); else { S = N; PID = 'novo-' + Date.now(); recompute(); }
+    location.hash = 'painel'; render(); toast('PATO criado. Siga as etapas do painel para completar.', 6000);
+  }
+
+  // ---------------- importação de preços com opções ----------------
+  function abrirImportPrecos() {
+    const P = S.parametros || {};
+    $('#drawer').innerHTML = '<div class="overlay" data-act="fechar"><div class="drawer" role="dialog" aria-label="Importar preços" data-stop="1"><div class="card-h"><h2>Importar preços</h2><button class="btn sm" data-act="fechar">Fechar</button></div>' +
+      '<p class="muted">Aceita a aba BD do modelo ou o relatório sintético do SICRO (código, descrição, unidade, custo). O SICRO publica custos sem BDI e arquivos separados para as condições sem e com desoneração.</p>' +
+      '<div class="form"><label class="f">Data-base destes preços<input id="ipDb" type="month" value="' + esc(S.projeto.dataBase || '') + '"></label><label class="f">Os valores vão para<select id="ipCol"><option value="ambas">As duas condições (o arquivo já traz as duas colunas)</option><option value="sd">Só sem desoneração</option><option value="cd">Só com desoneração</option></select></label></div>' +
+      '<label class="row"><input type="checkbox" id="ipBdi"> Os valores são custos sem BDI: aplicar o BDI</label>' +
+      '<div class="form"><label class="f">BDI sem desoneração (%)<input id="ipBs" inputmode="decimal" value="' + (P.bdiSD ? n2(P.bdiSD * 100) : '') + '"></label><label class="f">BDI com desoneração (%)<input id="ipBc" inputmode="decimal" value="' + (P.bdiCD ? n2(P.bdiCD * 100) : '') + '"></label></div>' +
+      '<div class="row"><button class="btn pri" data-act="impPrecosGo">Escolher arquivo</button></div><p class="note">Itens de administração local, canteiro, usina, mobilização, grupo de desempenho e betuminosos (AM e TM) não vêm do SICRO e continuam com o valor atual até serem revistos.</p></div></div>';
+  }
+  async function impPrecosGo() {
+    const col = $('#ipCol').value, dbase = $('#ipDb').value, bdi = $('#ipBdi').checked;
+    const bs = (parseNum($('#ipBs').value) || 0) / 100, bc = (parseNum($('#ipBc').value) || 0) / 100;
+    if (bdi && (!bs || !bc)) { toast('Informe os dois percentuais de BDI.'); return; }
+    const f = await escolherArquivo(); if (!f) return; const wb = await lerPlanilha(f);
+    const p = IMP.importarPrecos(wb, XLSX); const codes = Object.keys(p); if (!codes.length) throw new Error('Nenhum preço encontrado.');
+    const tr = x => x == null ? null : Math.trunc(x * 100 + 1e-9) / 100;
+    codes.forEach(c => {
+      const o = S.precos[c] || { descricao: p[c].descricao, unidade: p[c].unidade };
+      const vsd = p[c].sd, vcd = p[c].cd;
+      if (col === 'ambas' || col === 'sd') o.sd = bdi ? tr(vsd * (1 + bs)) : vsd;
+      if (col === 'ambas' || col === 'cd') o.cd = bdi ? tr((col === 'cd' ? vsd : vcd) * (1 + bc)) : (col === 'cd' ? vsd : vcd);
+      o.descricao = o.descricao || p[c].descricao; o.unidade = o.unidade || p[c].unidade; o.fonte = 'SICRO ' + dbase + ' · ' + f.name + (bdi ? ' (BDI aplicado)' : '');
+      S.precos[c] = o;
+    });
+    if (dbase) S.parametros.precosDataBase = dbase;
+    if (bdi) { S.parametros.bdiSD = bs; S.parametros.bdiCD = bc; }
+    markDirty('precos'); markDirty('projeto'); $('#drawer').innerHTML = ''; recompute(); render();
+    toast(codes.length + ' preços importados de ' + f.name + '.');
+  }
+
+  // ---------------- acrescentar serviço ----------------
+  function abrirAddLinha() {
+    const gs = (S.grupos || []).filter(g => g.item.split('.').length >= 2).sort((a, b) => a.linha - b.linha);
+    $('#drawer').innerHTML = '<div class="overlay" data-act="fechar"><div class="drawer" role="dialog" aria-label="Acrescentar serviço" data-stop="1"><div class="card-h"><h2>Acrescentar serviço</h2><button class="btn sm" data-act="fechar">Fechar</button></div>' +
+      '<div class="form"><label class="f">Grupo<select id="aG">' + gs.map(g => '<option value="' + esc(g.id) + '">' + esc(g.item + ' · ' + g.titulo) + '</option>').join('') + '</select></label>' +
+      '<label class="f">Código (banco de preços)<input id="aC" list="aCods" placeholder="4915757"></label><datalist id="aCods">' + Object.keys(S.precos).slice(0, 2000).map(c => '<option value="' + esc(c) + '">' + esc((S.precos[c].descricao || '').slice(0, 80)) + '</option>').join('') + '</datalist>' +
+      '<label class="f">Origem da quantidade<input id="aO" list="origens2" value="NOTA TÉCNICA"></label><datalist id="origens2">' + ['INVENTÁRIO', 'ICP', 'HISTÓRICO', 'SICRO', 'PROD SICRO', 'RESOLUÇÃO', 'NOTA TÉCNICA', 'ESTIMATIVA', 'MANUAL'].map(o => '<option value="' + o + '">').join('') + '</datalist>' +
+      '<label class="f">Unidade da base<input id="aU" placeholder="m, m³, un"></label></div>' +
+      '<label class="f">Expressão da base<textarea id="aB" rows="2" placeholder="Ex.: inv(&quot;bueiro&quot;) ou 12*35"></textarea></label><label class="f">Fator (nível de esforço ou taxa)<textarea id="aF" rows="1">1</textarea></label>' +
+      '<label class="f">Justificativa técnica<textarea id="aJ" rows="3" style="font-family:var(--f-body)"></textarea></label><div class="row"><button class="btn pri" data-act="addLinhaGo">Acrescentar</button><span class="muted" id="aErr"></span></div></div></div>';
+  }
+  function addLinhaGo() {
+    const gid = $('#aG').value, cod = $('#aC').value.trim(); const g = S.grupos.find(x => x.id === gid);
+    if (!g || !cod) { $('#aErr').textContent = 'Escolha o grupo e o código.'; return; }
+    const ord = S.grupos.concat(S.linhas.map(L => ({ linha: L.linha, item: L.item }))).sort((a, b) => a.linha - b.linha);
+    const prox = ord.find(x => x.linha > g.linha && (x.item.split('.').length <= g.item.split('.').length) && !x.item.startsWith(g.item + '.'));
+    const dentro = S.linhas.filter(L => L.linha > g.linha && (!prox || L.linha < prox.linha));
+    const ult = dentro.length ? Math.max(...dentro.map(L => L.linha)) : g.linha;
+    const lim = prox ? prox.linha : ult + 1;
+    const linha = ult + (lim - ult) / 2;
+    const filhos = dentro.filter(L => L.item.split('.').length === g.item.split('.').length + 1).map(L => parseInt(L.item.split('.').pop(), 10)).filter(n => !isNaN(n));
+    const item = g.item + '.' + String((filhos.length ? Math.max(...filhos) : 0) + 1).padStart(2, '0');
+    const id = 'N' + Date.now();
+    const p = S.precos[cod] || {};
+    S.linhas.push({ id, linha, item, origem: $('#aO').value.trim(), codigo: cod, descricao: p.descricao || '', unidade: p.unidade || '', unidadeBase: $('#aU').value.trim() || p.unidade || '', baseExpr: $('#aB').value.trim() || '0', fatorExpr: $('#aF').value.trim() || '1', modo: 'trunc', casas: 3, justificativa: $('#aJ').value.trim() });
+    recompute();
+    if (R.linhas[id] && R.linhas[id].erro) { const e = R.linhas[id].erro; S.linhas.pop(); recompute(); $('#aErr').textContent = 'Expressão inválida: ' + e; return; }
+    markDirty('linhas'); $('#drawer').innerHTML = ''; render(); toast('Serviço ' + item + ' acrescentado.');
+  }
+  function addDSM() {
+    const gs = S.grupos.slice().sort((a, b) => a.linha - b.linha);
+    const maxL = Math.max(0, ...S.linhas.map(L => L.linha), ...gs.map(g => g.linha));
+    if (!gs.some(g => g.item === '02')) S.grupos.push({ id: 'G02', item: '02', titulo: 'DEMAIS SERVIÇOS DE MANUTENÇÃO - DSM', linha: maxL + 10 });
+    const n = gs.filter(g => /^02\.\d\d$/.test(g.item)).length + 1;
+    const it = '02.' + String(n).padStart(2, '0');
+    S.grupos.push({ id: 'G' + it.replace('.', '_') + '_' + Date.now(), item: it, titulo: 'DSM ' + n + ' - informe a localização e o serviço', linha: maxL + 20 });
+    markDirty('linhas'); recompute(); render(); toast('Grupo ' + it + ' criado. Edite o título e acrescente os serviços com memória de cálculo e localização (art. 40).');
+  }
+
   // ---------------- render ----------------
   function render() {
     navHTML();
@@ -497,6 +663,34 @@
     const a = e.target.closest('[data-act]'); if (!a) return;
     if (a.dataset.act === 'fechar') { if (e.target.closest('[data-stop]') && !e.target.closest('button[data-act="fechar"]')) return; $('#drawer').innerHTML = ''; return; }
     const act = a.dataset.act;
+    if (act === 'novo') return abrirNovo();
+    if (act === 'criarNovo') { try { await criarNovo(); } catch (err) { console.error(err); $('#nErr') && ($('#nErr').textContent = err.message); } return; }
+    if (act === 'impPrecos') return abrirImportPrecos();
+    if (act === 'impPrecosGo') { try { await impPrecosGo(); } catch (err) { toast(err.message || String(err), 7000); } return; }
+    if (act === 'addLinha') return abrirAddLinha();
+    if (act === 'addLinhaGo') return addLinhaGo();
+    if (act === 'addDSM') return addDSM();
+    if (act === 'verADefinir') { ui.aDefinir = true; ui.filtro = ''; ui.origem = ''; ui.soComProblema = false; location.hash = 'planilha'; return render(); }
+    if (act === 'usarSug') { const L = S.linhas.find(x => x.id === a.dataset.id); const ta = document.querySelector('#drawer [data-l="baseExpr"]'); if (L && ta) ta.value = L.sugestao; return; }
+    if (act === 'delLinha') {
+      if (a.dataset.confirm !== '1') { a.dataset.confirm = '1'; a.textContent = 'Confirmar exclusão'; return; }
+      const id = a.dataset.id; const ref = S.linhas.filter(L => L.id !== id && new RegExp('"' + id + '"').test(L.baseExpr + L.fatorExpr));
+      if (ref.length) { $('#lerr').textContent = 'Não excluída: as linhas ' + ref.map(L => L.item).join(', ') + ' dependem dela.'; return; }
+      S.linhas = S.linhas.filter(L => L.id !== id); markDirty('linhas'); $('#drawer').innerHTML = ''; recompute(); render(); toast('Linha excluída.'); return;
+    }
+    if (act === 'addCot') {
+      const g = id => $('#' + id).value.trim();
+      if (!g('cMat') || !g('cForn') || parseNum(g('cPreco')) == null) { toast('Informe material, fornecedor e preço.'); return; }
+      S.cotacoes = S.cotacoes || []; S.cotacoes.push({ material: g('cMat'), fornecedor: g('cForn'), municipio: g('cMun'), preco: parseNum(g('cPreco')), unidade: g('cUn') || 't', data: g('cData'), dmtPav: parseNum(g('cDp')), dmtNaoPav: parseNum(g('cDn')), fonte: 'Inserida manualmente' });
+      markDirty('apoio'); recompute(); render(); toast('Cotação acrescentada.'); return;
+    }
+    if (act === 'delCot') { S.cotacoes.splice(Number(a.dataset.i), 1); markDirty('apoio'); recompute(); return render(); }
+    if (act === 'cotCroqui') {
+      const c = S.cotacoes[Number(a.dataset.i)]; const m = String(c.material).toUpperCase(); let n = 0;
+      Object.keys(S.croqui).forEach(k => { const x = S.croqui[k]; if (String(x.material).toUpperCase() === m && !/USINA/i.test(x.destino || '')) { if (c.dmtPav != null) x.P = c.dmtPav; if (c.dmtNaoPav != null) x.RP = c.dmtNaoPav; n++; } });
+      if (!n) { toast('Nenhuma linha do croqui com o material ' + c.material + '.'); return; }
+      markDirty('apoio'); recompute(); render(); toast('DMT de ' + c.material + ' aplicada em ' + n + ' percurso(s) do croqui.'); return;
+    }
     if (act === 'linha') return abrirLinha(a.dataset.id);
     if (act === 'salvarLinha') {
       const L = S.linhas.find(x => x.id === a.dataset.id); const d = $('#drawer'); const backup = JSON.stringify(L);

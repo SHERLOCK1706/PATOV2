@@ -255,7 +255,9 @@
     if (W.has('RESUMO_PATO')) for (let r = 17; r < 40; r++) { const it = W.V('RESUMO_PATO', 'B' + r); if (it && /^\d\d/.test(String(it))) gab.resumo.push({ item: String(it), titulo: W.V('RESUMO_PATO', 'C' + r), sd: num(W.V('RESUMO_PATO', 'D' + r)), cd: num(W.V('RESUMO_PATO', 'F' + r)) }); }
     transportes.forEach(b => gab.transportes[b.id] = b.totalPlanilha);
     const adm = { engenheiroCoef: W.has('ADM_LOCAL') ? num(W.V('ADM_LOCAL', 'F24')) : null, vigia: 0 };
-    return { estado: { versao: 1, projeto, inventario, icp, undia, croqui, fit, transportes, desempenho, rocada, precos, binomio, grupos, linhas, adm, gabarito: gab, parametros: { dsmMultiplicaPrazo: false }, cotacoes: [], justificativas: {} }, avisos };
+    const bdiSD = W.has('BDI') ? num(W.V('BDI', 'E25')) : null, bdiCD = W.has('BDI') ? num(W.V('BDI', 'E44')) : null;
+    const parametros = { dsmMultiplicaPrazo: false, precosDataBase: dbStr, bdiSD: bdiSD ? bdiSD / 100 : null, bdiCD: bdiCD ? bdiCD / 100 : null };
+    return { estado: { versao: 1, projeto, inventario, icp, undia, croqui, fit, transportes, desempenho, rocada, precos, binomio, grupos, linhas, adm, gabarito: gab, parametros, cotacoes: [], justificativas: {} }, avisos };
   }
 
   // ---------- arquivos avulsos ----------

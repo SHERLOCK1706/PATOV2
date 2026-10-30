@@ -4,6 +4,20 @@ Protótipo de sistema para elaborar o Plano Anual de Trabalho e Orçamento (PATO
 
 O sistema lê uma planilha PATO no modelo usado pela SR/MT, recalcula todas as quantidades e preços a partir dos dados de entrada (inventário, ICP, histórico, croqui, transportes e preços), aplica as verificações da resolução e gera as saídas em Excel.
 
+## Como criar um PATO do zero
+
+1. No painel, clique em **Novo PATO**. Informe rodovia, km inicial e final, SNV, data-base (mês do SICRO), prazo e largura da faixa, e escolha o modelo de origem.
+2. O novo plano herda do modelo a estrutura de serviços, as regras do ICP, o grupo de desempenho e os transportes. Inventário, levantamento, histórico, cotações, DMT, VMDf e quantidades por memória de cálculo começam vazios.
+3. Siga a lista **Para completar este PATO** no painel:
+   - importe o inventário (aba RESUMO_INVENT ou tabela chave/valor);
+   - importe o levantamento do pavimento (ICP) e, se houver, o histórico executado;
+   - importe os preços do SICRO na data-base escolhida (com opção de aplicar o BDI);
+   - insira as cotações de pétreos e areia e use "Usar no croqui" para levar a DMT;
+   - informe o VMDf no FIT e as DMT que faltarem;
+   - preencha as quantidades por memória de cálculo marcadas como "a definir";
+   - acrescente os DSM do trecho, se houver.
+4. Em **Saídas e exportação**, baixe a planilha preenchida (.xlsx).
+
 ## Critério de aceite
 
 O motor precisa reproduzir, linha a linha, uma planilha PATO aprovada usando apenas os dados de entrada dela. Com a planilha da BR-158/MT (km 326,00 ao km 416,80) o resultado é:

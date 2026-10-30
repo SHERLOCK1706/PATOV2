@@ -400,6 +400,32 @@
       add('R25', 'Art. 20, § 1º, I', 'Segmentos conferem com o SNV vigente', prob.length ? 'erro' : 'ok', prob.length ? prob.join('; ') + '.' : 'Todos os segmentos existem no SNV importado com os mesmos km.');
     } else add('R25', 'Art. 20, § 1º, I', 'Segmentos conferem com o SNV vigente', 'alerta', 'Importe a planilha do SNV vigente para conferir códigos e quilometragem.');
 
+    // R26 BDI dos betuminosos na condição com desoneração
+    const bs = Number((st.parametros || {}).bdiSD), bc = Number((st.parametros || {}).bdiCD);
+    if (bs > 0 && bc > 0) {
+      const esperado = (1 + bc) / (1 + bs); const ruins = [];
+      [...new Set(linhas.filter(L => ASFALTO.test(L.codigo)).map(L => L.codigo))].forEach(c => { const p = (st.precos || {})[c]; if (p && p.sd > 0 && Math.abs(p.cd / p.sd / esperado - 1) > 0.01) ruins.push(c + ' (' + fmt(p.cd, 2) + ', esperado ' + fmt(p.sd * esperado, 2) + ')'); });
+      let impacto = 0; Object.keys(R.linhas).forEach(id => { const L = linhas.find(x => x.id === id); if (L && ASFALTO.test(L.codigo) && ruins.some(r => r.startsWith(L.codigo + ' '))) impacto += R.linhas[id].cd - trunc(R.linhas[id].qtd * trunc(R.linhas[id].puSD * esperado, 2), 2); });
+      add('R26', 'Art. 48 e IN DNIT nº 62/2021', 'Betuminosos com desoneração coerentes com o BDI', ruins.length ? 'erro' : 'ok', ruins.length ? 'O preço com desoneração não corresponde ao BDI de ' + fmt(bc * 100, 2) + '% sobre a base de ' + fmt(bs * 100, 2) + '%: ' + ruins.join('; ') + '. Efeito no total com desoneração: ' + brl(impacto) + '.' : 'Preços de aquisição com e sem desoneração seguem a mesma base e o BDI de cada condição.', linhas.filter(L => ruins.some(r => r.startsWith(L.codigo + ' '))).map(L => L.id));
+    }
+
+    // R27 quantidades a definir
+    const aDef = linhas.filter(L => L.aPreencher && !(R.linhas[L.id] && R.linhas[L.id].base));
+    if (linhas.some(L => L.aPreencher)) add('R27', 'Art. 24, §§ 1º e 6º', 'Quantidades por memória de cálculo informadas', aDef.length ? 'erro' : 'ok', aDef.length ? aDef.length + ' linha(s) ainda sem quantidade: ' + aDef.slice(0, 10).map(L => L.item).join(', ') + (aDef.length > 10 ? '…' : '') + '.' : 'Todas as quantidades por memória de cálculo foram informadas.', aDef.map(L => L.id));
+
+    // R28 preços na data-base do projeto
+    const pdb = (st.parametros || {}).precosDataBase;
+    if (pdb) add('R28', 'Art. 22', 'Preços na mesma data-base do orçamento', pdb === P.dataBase ? 'ok' : 'erro', pdb === P.dataBase ? 'Banco de preços na data-base ' + pdb + '.' : 'O banco de preços está na data-base ' + pdb + ' e o orçamento em ' + (P.dataBase || '—') + '. Importe o SICRO da data-base do orçamento.');
+
+    // R29 inventário e levantamento
+    const invVals = Object.values(st.inventario || {}); const invOk = invVals.filter(i => Number(i.valor) > 0).length;
+    add('R29', 'Art. 17 e art. 20', 'Inventário e levantamento do pavimento informados', !invOk || !(st.icp && st.icp.levantamento && st.icp.levantamento.length) ? 'erro' : 'ok', invOk + ' de ' + invVals.length + ' elementos do inventário com valor; ' + ((st.icp && st.icp.levantamento) || []).length + ' trechos no levantamento do ICP.');
+
+    // R30 DMT e VMDf
+    const dmt0 = []; Object.values(R.transportes).forEach(t => t.linhas.forEach(l => { if (l.qtd > 0 && !(l.dmt > 0)) dmt0.push(l.material + ' ' + l.origem + '→' + l.destino); }));
+    const vmd0 = (st.fit || []).filter(f => !(Number(f.vmdf) > 0)).length;
+    add('R30', 'Anexos VI, VIII e IX', 'DMT e VMDf informados para os transportes', dmt0.length || vmd0 ? 'erro' : 'ok', (dmt0.length ? 'Sem DMT: ' + [...new Set(dmt0)].join('; ') + '. ' : '') + (vmd0 ? vmd0 + ' linha(s) do FIT sem VMDf.' : '') || 'Todas as DMTs e VMDf informados.');
+
     // R23 erros de cálculo
     add('R23', 'Integridade do cálculo', 'Todas as expressões resolvidas', R.erros.length ? 'erro' : 'ok', R.erros.length ? R.erros.slice(0, 5).join(' · ') : 'Nenhuma referência quebrada.');
     return out;
